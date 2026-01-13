@@ -154,12 +154,12 @@ void I001_070_Handler::decode(Asterix1Report& report, std::string_view data) con
     mode3ATemp = ntohs(mode3ATemp);
 
     // Check for presence/validity: bits 15, 14, and 13 must be zero (0xe000 mask).
-    const bool validity = mode3ATemp & 0x8000;
-    const bool garbled  = mode3ATemp & 0x4000;
-    const bool local    = mode3ATemp & 0x2000;
+    const bool validated = !(mode3ATemp & 0x8000);
+    const bool garbled   = mode3ATemp & 0x4000;
+    const bool local     = mode3ATemp & 0x2000;
     // Extract the 12 bits of the Mode 3/A code (0x0fff mask).
     uint16_t mode3A = mode3ATemp & 0x0FFF;
-    report.setMode3A(mode3A, validity, garbled, local);
+    report.setMode3A(mode3A, validated, garbled, local);
 }
 
 /**
@@ -178,7 +178,7 @@ void I001_090_Handler::decode(Asterix1Report& report, std::string_view data) con
     std::memcpy(&flightLevelTemp, data.data(), 2);
     flightLevelTemp = ntohs(flightLevelTemp);
 
-    bool v = flightLevelTemp & 0x8000;
+    bool v = !(flightLevelTemp & 0x8000);
     bool g = flightLevelTemp & 0x4000;
 
     // Clear the reserved bits and extract the 14-bit value.

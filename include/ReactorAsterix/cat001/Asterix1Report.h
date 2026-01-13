@@ -43,7 +43,7 @@ class Asterix1Report final : public AsterixMessage {
             NO_DETECTION = 0,
             SOLE_PRIMARY_DETECTION = 1,
             SOLE_SECONDARY_DETECTION = 2,
-            COMBINDE_PRIMARY_AND_SECONDARY_DETECTION = 3
+            COMBINED_PRIMARY_AND_SECONDARY_DETECTION = 3
         };
 
         enum class DS1DS2_T : uint8_t {
