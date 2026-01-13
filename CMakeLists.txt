@@ -150,3 +150,25 @@ add_custom_target(run_example
     DEPENDS asterix_pro_example
     COMMENT "Running the improved ASTERIX example..."
 )
+
+# Check if AtuReactor is available on the system
+find_package(AtuReactor QUIET)
+
+if(AtuReactor_FOUND)
+    message(STATUS "AtuReactor found: enabling networking examples")
+
+    add_executable(atu_asterix_receiver examples/atu_asterix_receiver.cc)
+
+    # Link against your library and the networking library
+    target_link_libraries(atu_asterix_receiver PRIVATE
+        ReactorAsterix
+        AtuReactor::AtuReactor
+    )
+
+    # Ensure include paths are correct
+    target_include_directories(atu_asterix_receiver PRIVATE
+        ${CMAKE_CURRENT_SOURCE_DIR}/include
+    )
+else()
+    message(WARNING "AtuReactor not found. Skipping networking examples.")
+endif()
