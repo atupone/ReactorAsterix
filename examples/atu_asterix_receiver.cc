@@ -16,8 +16,8 @@ using namespace atu_reactor;
 // A simple printer for decoded radar reports
 class AsterixPrinter : public IAsterix1Listener {
 public:
-    void onReportDecoded(std::shared_ptr<Asterix1Report> report) override {
-        std::cout << "[CAT001] Decoded - Range: " << report->range << "m" << std::endl;
+    void onReportDecoded(const Asterix1Report& report) override {
+        std::cout << "[CAT001] Decoded - Range: " << report.range << "m" << std::endl;
     }
 };
 

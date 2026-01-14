@@ -14,21 +14,19 @@ using namespace ReactorAsterix;
 // Better: Encapsulate the listener logic
 class TerminalLogger : public IAsterix1Listener {
 public:
-    void onReportDecoded(std::shared_ptr<Asterix1Report> report) override {
-        if (!report) return;
-
+    void onReportDecoded(const Asterix1Report& report) override {
         std::cout << "\033[1;32m[CAT 001 Report Decoded]\033[0m\n";
 
         // Use SAC/SIC from report
-        std::cout << "  Source: SAC=" << static_cast<int>(report->sourceIdentifier.sac) 
-                  << " SIC=" << static_cast<int>(report->sourceIdentifier.sic) << "\n";
+        std::cout << "  Source: SAC=" << static_cast<int>(report.sourceIdentifier.sac) 
+                  << " SIC=" << static_cast<int>(report.sourceIdentifier.sic) << "\n";
 
-        if (report->mode3A) {
+        if (report.mode3A) {
              std::cout << "  Mode 3/A: " << std::setfill('0') << std::setw(4) 
-                       << std::oct << report->mode3A->code << std::dec << "\n";
+                       << std::oct << report.mode3A->code << std::dec << "\n";
         }
 
-        std::cout << "  Position: " << report->range << "m @ " << report->azimuth << " rad\n" 
+        std::cout << "  Position: " << report.range << "m @ " << report.azimuth << " rad\n" 
                   << std::endl;
     }
 };

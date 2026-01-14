@@ -69,14 +69,14 @@ size_t Asterix2Handler::processDataRecord(
         std::string_view payload)
 {
     // Create the context object (Asterix2Report).
-    auto report = std::make_shared<Asterix2Report>();
+    auto report = Asterix2Report();
 
     // Decode everything first.
-    size_t consumed = this->_processDataRecordInternal(fspec, payload, *report);
+    size_t consumed = this->_processDataRecordInternal(fspec, payload, report);
 
     if (consumed > 0) {
         // Update state with the radar's actual 32-bit time for the next message
-        sourceStateManager->updateSourceTime(report->sourceIdentifier, report->TOD);
+        sourceStateManager->updateSourceTime(report.sourceIdentifier, report.TOD);
 
         // Notify all registered listeners
         for (auto* listener : listeners) {

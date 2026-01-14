@@ -141,27 +141,26 @@ size_t Asterix1Handler::processDataRecord(
         std::string_view payload)
 {
     // Create the context object (Asterix1Report).
-    auto report = std::make_shared<Asterix1Report>();
+    auto report = Asterix1Report();
 
     // Decode everything first.
     // This populates SAC/SIC and the raw 16-bit LSP Clock (if present).
-    size_t consumed = this->_processDataRecordInternal(fspec, payload, *report);
+    size_t consumed = this->_processDataRecordInternal(fspec, payload, report);
 
     if (consumed > 0) {
         // Get the best available 24-bit reference time
         uint32_t ref = sourceStateManager->getReferenceTime(
-                report->sourceIdentifier).value_or(calculateCurrentTod());
+                report.sourceIdentifier).value_or(calculateCurrentTod());
 
-        report->TOD = report->hasLspClock
-            ? expandTruncatedTime(report->todLSP, ref)
+        report.TOD = report.hasLspClock
+            ? expandTruncatedTime(report.todLSP, ref)
             : ref;
 
         // Update state with the radar's actual 32-bit time for the next message
-        sourceStateManager->updateSourceTime(report->sourceIdentifier, report->TOD);
+        sourceStateManager->updateSourceTime(report.sourceIdentifier, report.TOD);
 
         // Notify all registered listeners
         for (auto* listener : listeners) {
-            // Pass a shared_ptr copy to ensure thread safety if listener keeps it
             listener->onReportDecoded(report);
         }
     }

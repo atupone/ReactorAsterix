@@ -33,7 +33,7 @@ class IAsterix2Listener {
          * @brief Called by the handler when a record is successfully decoded.
          * Uses a virtual call which is faster than std::function for shared libraries.
          */
-        virtual void onReportDecoded(std::shared_ptr<Asterix2Report> report) = 0;
+        virtual void onReportDecoded(const Asterix2Report& report) = 0;
 };
 
 } // namespace ReactorAsterix
