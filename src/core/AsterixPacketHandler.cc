@@ -16,13 +16,13 @@
  */
 
 // Interface
-#include "ReactorAsterix/core/AsterixPacketHandler.h"
+#include <ReactorAsterix/core/AsterixPacketHandler.h>
 
 // System headers
 #include <algorithm>
 
 // Library headers
-#include "ReactorAsterix/core/AsterixConstants.h"
+#include <ReactorAsterix/core/AsterixConstants.h>
 
 namespace ReactorAsterix {
 

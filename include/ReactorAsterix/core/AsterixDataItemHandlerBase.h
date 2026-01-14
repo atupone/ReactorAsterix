@@ -18,7 +18,9 @@
 #pragma once
 
 // Inherits from the main interface
-#include "ReactorAsterix/core/IAsterixDataItemHandler.h"
+#include <ReactorAsterix/core/IAsterixDataItemHandler.h>
+
+// SYstem headers
 #include <string_view>
 
 namespace ReactorAsterix {

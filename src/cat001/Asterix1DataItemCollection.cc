@@ -16,15 +16,15 @@
  */
 
 // Interface
-#include "ReactorAsterix/cat001/Asterix1DataItemCollection.h"
+#include <ReactorAsterix/cat001/Asterix1DataItemCollection.h>
 
 // System headers
 #include <arpa/inet.h>
 #include <cstring>
 
 // Library headers
-#include "ReactorAsterix/cat001/Asterix1Report.h"
-#include "ReactorAsterix/core/asterixExceptions.h"
+#include <ReactorAsterix/cat001/Asterix1Report.h>
+#include <ReactorAsterix/core/AsterixDiagnostics.h>
 
 namespace ReactorAsterix {
 
@@ -66,7 +66,8 @@ void I001_020_Handler::decode(Asterix1Report& report, std::string_view data) con
     // Check for uninterpreted reserved bits in the first octet (bits 7, and 6).
     constexpr uint8_t RESERVED_BITS_OCTET1 = 0xC0;
     if (octet1 & RESERVED_BITS_OCTET1) {
-        throw uninterpretedItem();
+        stats_ptr->uninterpretedItems.fetch_add(1, std::memory_order_relaxed);
+        return;
     }
 
     // Decode the 2 bits of the SSR/PSR (Target Report Type - bits 5-4).
@@ -85,7 +86,8 @@ void I001_020_Handler::decode(Asterix1Report& report, std::string_view data) con
         // Check for uninterpreted reserved bits in the second octet (bits 7, 4, and 3).
         constexpr uint8_t RESERVED_BITS_OCTET2 = 0x98;
         if (octet2 & RESERVED_BITS_OCTET2) {
-            throw uninterpretedItem();
+            stats_ptr->uninterpretedItems.fetch_add(1, std::memory_order_relaxed);
+            return;
         }
 
         // Decode the 2 bits of the EMG (Emergency) subfield (bits 5-4).
@@ -94,7 +96,8 @@ void I001_020_Handler::decode(Asterix1Report& report, std::string_view data) con
 
         // Check the FX bit (bit 0) of the second octet for the third octet.
         if (octet2 & 0x01) {
-            throw uninterpretedItem();
+            stats_ptr->uninterpretedItems.fetch_add(1, std::memory_order_relaxed);
+            return;
         }
     }
 }

@@ -16,13 +16,13 @@
  */
 
 // Own header
-#include "ReactorAsterix/cat002/Asterix2Handler.h"
+#include <ReactorAsterix/cat002/Asterix2Handler.h>
 
 // System headers
 #include <stdexcept>
 
 // Library headers
-#include "ReactorAsterix/cat002/Asterix2DataItemCollection.h"
+#include <ReactorAsterix/cat002/Asterix2DataItemCollection.h>
 
 namespace ReactorAsterix {
 
@@ -69,7 +69,7 @@ size_t Asterix2Handler::processDataRecord(
         std::string_view payload)
 {
     // Create the context object (Asterix2Report).
-    auto report = Asterix2Report();
+    Asterix2Report report;
 
     // Decode everything first.
     size_t consumed = this->_processDataRecordInternal(fspec, payload, report);

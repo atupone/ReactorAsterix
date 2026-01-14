@@ -23,7 +23,7 @@
 #include <optional>
 
 // Library headers
-#include "ReactorAsterix/core/SourceIdentifier.h"
+#include <ReactorAsterix/core/SourceIdentifier.h>
 
 namespace ReactorAsterix {
 

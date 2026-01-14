@@ -62,7 +62,6 @@ set(LIB_HEADERS
     include/ReactorAsterix/core/AsterixDataItemHandlerFixedLength.h
     include/ReactorAsterix/core/AsterixDataItemHandlerBase.h
     include/ReactorAsterix/core/AsterixDiagnostics.h
-    include/ReactorAsterix/core/asterixExceptions.h
     include/ReactorAsterix/core/AsterixMessage.h
     include/ReactorAsterix/core/AsterixPacketHandler.h
     include/ReactorAsterix/core/IAsterixCategoryHandler.h

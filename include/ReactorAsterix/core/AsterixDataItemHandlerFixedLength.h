@@ -17,8 +17,8 @@
 
 #pragma once
 
-// Inherits from the main interface
-#include "ReactorAsterix/core/AsterixDataItemHandlerBase.h"
+// Inherits from
+#include <ReactorAsterix/core/AsterixDataItemHandlerBase.h>
 
 namespace ReactorAsterix {
 

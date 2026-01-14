@@ -18,7 +18,7 @@
 #pragma once
 
 // Inherits from the main interface
-#include "ReactorAsterix/core/AsterixDataItemHandlerBase.h"
+#include <ReactorAsterix/core/AsterixDataItemHandlerBase.h>
 
 // System headers
 #include <cstdint>

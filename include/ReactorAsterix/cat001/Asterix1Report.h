@@ -18,7 +18,7 @@
 #pragma once
 
 // Inherits from
-#include "ReactorAsterix/core/AsterixMessage.h"
+#include <ReactorAsterix/core/AsterixMessage.h>
 
 // System headers
 #include <cstdint>

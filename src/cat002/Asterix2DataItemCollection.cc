@@ -16,7 +16,7 @@
  */
 
 // Interface
-#include "ReactorAsterix/cat002/Asterix2DataItemCollection.h"
+#include <ReactorAsterix/cat002/Asterix2DataItemCollection.h>
 
 // System headers
 #include <arpa/inet.h>
@@ -24,8 +24,7 @@
 #include <cstring>
 
 // Library headers
-#include "ReactorAsterix/cat002/Asterix2Report.h"
-#include "ReactorAsterix/core/asterixExceptions.h"
+#include <ReactorAsterix/cat002/Asterix2Report.h>
 
 namespace ReactorAsterix {
 

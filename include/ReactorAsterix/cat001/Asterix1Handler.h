@@ -18,16 +18,16 @@
 #pragma once
 
 // Inherits from
-#include "ReactorAsterix/core/AsterixCategoryHandler.h"
+#include <ReactorAsterix/core/AsterixCategoryHandler.h>
+#include <ReactorAsterix/cat001/Asterix1Report.h>
 
 // System headers
 #include <algorithm>
 #include <vector>
 
 // Library headers
-#include "ReactorAsterix/cat001/Asterix1Report.h"
-#include "ReactorAsterix/cat001/IAsterix1Listener.h"
-#include "ReactorAsterix/core/SourceStateManager.h"
+#include <ReactorAsterix/cat001/IAsterix1Listener.h>
+#include <ReactorAsterix/core/SourceStateManager.h>
 
 namespace ReactorAsterix {
 

@@ -36,6 +36,7 @@ namespace ReactorAsterix {
         uint64_t recordParseErrors{0};
         uint64_t protocolViolations{0};
         uint64_t unhandledItems{0};
+        uint64_t uninterpretedItems{0};
     };
 
     /**
@@ -53,6 +54,7 @@ namespace ReactorAsterix {
         std::atomic<uint64_t> recordParseErrors{0};
         std::atomic<uint64_t> protocolViolations{0};
         std::atomic<uint64_t> unhandledItems{0};
+        std::atomic<uint64_t> uninterpretedItems{0};
 
         /**
          * @brief Create a copyable snapshot of the current counters.

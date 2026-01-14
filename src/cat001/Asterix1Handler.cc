@@ -16,14 +16,14 @@
  */
 
 // Own header
-#include "ReactorAsterix/cat001/Asterix1Handler.h"
+#include <ReactorAsterix/cat001/Asterix1Handler.h>
 
 // System headers
 #include <cmath>
 #include <chrono>
 
 // Library headers
-#include "ReactorAsterix/cat001/Asterix1DataItemCollection.h"
+#include <ReactorAsterix/cat001/Asterix1DataItemCollection.h>
 
 namespace ReactorAsterix {
 
@@ -141,7 +141,7 @@ size_t Asterix1Handler::processDataRecord(
         std::string_view payload)
 {
     // Create the context object (Asterix1Report).
-    auto report = Asterix1Report();
+    Asterix1Report report;
 
     // Decode everything first.
     // This populates SAC/SIC and the raw 16-bit LSP Clock (if present).

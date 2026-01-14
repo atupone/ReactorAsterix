@@ -17,10 +17,9 @@
 
 #pragma once
 
-// Library headers
-#include "ReactorAsterix/core/AsterixDataItemHandlerBase.h"
-#include "ReactorAsterix/core/AsterixDataItemHandlerFixedLength.h"
-#include "ReactorAsterix/core/AsterixDataItemHandlerExtendedLength.h"
+// Inherits from
+#include <ReactorAsterix/core/AsterixDataItemHandlerFixedLength.h>
+#include <ReactorAsterix/core/AsterixDataItemHandlerExtendedLength.h>
 
 namespace ReactorAsterix {
 

@@ -18,7 +18,7 @@
 #pragma once
 
 // Inherits from
-#include "ReactorAsterix/core/IAsterixCategoryHandler.h"
+#include <ReactorAsterix/core/IAsterixCategoryHandler.h>
 
 // System headers
 #include <algorithm>
@@ -27,8 +27,8 @@
 #include <vector>
 
 // Libray headers
-#include "ReactorAsterix/core/IAsterixDataItemHandler.h"
-#include "ReactorAsterix/core/AsterixDiagnostics.h"
+#include <ReactorAsterix/core/IAsterixDataItemHandler.h>
+#include <ReactorAsterix/core/AsterixDiagnostics.h>
 
 namespace ReactorAsterix {
 
