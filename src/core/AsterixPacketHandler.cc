@@ -20,6 +20,8 @@
 
 // System headers
 #include <algorithm>
+#include <arpa/inet.h>
+#include <cstring>
 
 // Library headers
 #include <ReactorAsterix/core/AsterixConstants.h>
@@ -30,8 +32,11 @@ namespace {
     // Helper to safely read Big Endian 16-bit integer from a view
     // returns 0 if view is too small, but caller usually checks bounds first.
     inline uint16_t readBe16(std::string_view sv, size_t offset) {
-        const auto* ptr = reinterpret_cast<const uint8_t*>(sv.data()) + offset;
-        return static_cast<uint16_t>((ptr[0] << 8) | ptr[1]);
+        if (offset + 2 > sv.size()) return 0;
+        uint16_t tmp;
+        // Safe against alignment violations
+        std::memcpy(&tmp, sv.data() + offset, sizeof(uint16_t));
+        return ntohs(tmp);
     }
 }
 
