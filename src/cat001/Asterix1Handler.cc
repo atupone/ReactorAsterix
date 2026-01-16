@@ -164,8 +164,19 @@ size_t Asterix1Handler::processDataRecord(
         std::shared_lock lock(listenerMutex);
 
         // Notify all registered listeners
-        for (auto* listener : listeners) {
-            listener->onReportDecoded(report);
+
+        // Use an iterator-based loop so we can remove dead listeners
+        auto it = listeners.begin();
+        while (it != listeners.end()) {
+            // Attempt to get a temporary shared_ptr
+            if (auto strongListener = it->lock()) {
+                strongListener->onReportDecoded(report);
+                ++it;
+            } else {
+                // The listener was deleted elsewhere!
+                // This is safe cleanup.
+                it = listeners.erase(it);
+            }
         }
     }
 

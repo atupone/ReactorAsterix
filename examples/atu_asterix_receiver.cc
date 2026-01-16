@@ -39,8 +39,8 @@ int main() {
     AsterixPacketHandler packetHandler;
     
     auto cat1 = std::make_unique<Asterix1Handler>(stateManager);
-    AsterixPrinter printer;
-    cat1->addListener(&printer);
+    auto printer = std::make_shared<AsterixPrinter>();
+    cat1->addListener(printer);
     packetHandler.registerCategoryHandler(1, std::move(cat1));
 
     // 2. Setup Network Reactor

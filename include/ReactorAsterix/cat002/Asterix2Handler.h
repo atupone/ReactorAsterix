@@ -48,11 +48,20 @@ class Asterix2Handler final : public AsterixCategoryHandler<Asterix2Report> {
          * @brief Adds a listener to the notification list.
          * Does not take ownership of the pointer. Duplicate listeners are ignored.
          */
-        void addListener(IAsterix2Listener* l) {
+        void addListener(std::shared_ptr<IAsterix2Listener> l) {
+            if (!l) return;
+
             // EXCLUSIVE LOCK: Only one thread can write at a time
             std::unique_lock lock(listenerMutex);
 
-            if (l && std::find(listeners.begin(), listeners.end(), l) == listeners.end()) {
+            // Use find_if to compare the underlying pointers
+            auto it = std::find_if(listeners.begin(), listeners.end(),
+                [&l](const std::weak_ptr<IAsterix2Listener>& existing) {
+                    // lock() gets a shared_ptr; we compare it to our target 'l'
+                    return existing.lock() == l;
+                });
+
+            if (it == listeners.end()) {
                 listeners.push_back(l);
             }
         }
@@ -82,7 +91,7 @@ class Asterix2Handler final : public AsterixCategoryHandler<Asterix2Report> {
 
     private:
         // Supports multiple sinks (Logger, Tracker, Display)
-        std::vector<IAsterix2Listener*> listeners;
+        std::vector<std::weak_ptr<IAsterix2Listener>> listeners;
 
         // C++17 Reader-Writer Lock
         mutable std::shared_mutex listenerMutex;

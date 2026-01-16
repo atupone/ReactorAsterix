@@ -42,8 +42,8 @@ int main() {
     auto cat1Handler = std::make_unique<Asterix1Handler>(stateManager);
 
     // Register listener before moving ownership
-    TerminalLogger logger;
-    cat1Handler->addListener(&logger);
+    auto logger = std::make_shared<TerminalLogger>();
+    cat1Handler->addListener(logger);
 
     packetHandler.registerCategoryHandler(1, std::move(cat1Handler));
 
