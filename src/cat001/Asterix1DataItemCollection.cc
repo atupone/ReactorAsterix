@@ -25,6 +25,7 @@
 // Library headers
 #include <ReactorAsterix/cat001/Asterix1Report.h>
 #include <ReactorAsterix/core/AsterixDiagnostics.h>
+#include <ReactorAsterix/core/FastBitReader.h>
 
 namespace ReactorAsterix {
 
@@ -61,44 +62,57 @@ void I001_010_Handler::decode(Asterix1Report& report, std::string_view data) con
  * @param data The raw data buffer for this item.
  */
 void I001_020_Handler::decode(Asterix1Report& report, std::string_view data) const {
-    const auto octet1 = data[0];
+    const uint8_t* raw = reinterpret_cast<const uint8_t*>(data.data());
+    FastBitReader reader(raw);
+    int bit = 7; // Start at MSB
 
     // Check for uninterpreted reserved bits in the first octet (bits 7, and 6).
-    constexpr uint8_t RESERVED_BITS_OCTET1 = 0xC0;
-    if (octet1 & RESERVED_BITS_OCTET1) {
+    uint8_t res = reader.readBits<2>(bit);
+    if (res) {
         stats_ptr->uninterpretedItems.fetch_add(1, std::memory_order_relaxed);
         return;
     }
 
     // Decode the 2 bits of the SSR/PSR (Target Report Type - bits 5-4).
-    const uint8_t ssr_psr = (octet1 & 0x30) >> 4;
+    const uint8_t ssr_psr = reader.readBits<2>(bit);
     report.setSSR_PSR(ssr_psr);
 
     // Decode the SPI bit (Special Position Identification - bit 2).
-    if (octet1 & 0x04) {
-        report.setSPI(true);
+    bool spi = reader.readBit(bit);
+    report.setSPI(spi);
+
+    res = reader.readBits<2>(bit);
+    if (res) {
+        stats_ptr->uninterpretedItems.fetch_add(1, std::memory_order_relaxed);
+        return;
     }
 
     // Check the FX bit (bit 0) to see if the second octet exists.
-    if (octet1 & 0x01) {
-        const auto octet2 = static_cast<uint8_t>(data[1]);
-
-        // Check for uninterpreted reserved bits in the second octet (bits 7, 4, and 3).
-        constexpr uint8_t RESERVED_BITS_OCTET2 = 0x98;
-        if (octet2 & RESERVED_BITS_OCTET2) {
+    bool fx = reader.readBit(bit);
+    if (fx) {
+        bool resB = reader.readBit(bit);
+        if (resB) {
             stats_ptr->uninterpretedItems.fetch_add(1, std::memory_order_relaxed);
             return;
         }
 
         // Decode the 2 bits of the EMG (Emergency) subfield (bits 5-4).
-        const uint8_t ds1ds2 = (octet2 & 0x60) >> 5;
+        const uint8_t ds1ds2 = reader.readBits<2>(bit);
         report.setDs1Ds2(ds1ds2);
 
-        // Check the FX bit (bit 0) of the second octet for the third octet.
-        if (octet2 & 0x01) {
+        res = reader.readBits<2>(bit);
+        if (res) {
             stats_ptr->uninterpretedItems.fetch_add(1, std::memory_order_relaxed);
             return;
         }
+
+        bit -= 2;
+
+        // Check the FX bit (bit 0) of the second octet for the third octet.
+        fx = reader.readBit(bit);
+    }
+    if (fx) {
+        stats_ptr->uninterpretedItems.fetch_add(1, std::memory_order_relaxed);
     }
 }
 
@@ -152,14 +166,19 @@ void I001_040_Handler::decode(Asterix1Report& report, std::string_view data) con
  * @param data The raw data buffer for this item (2 bytes).
  */
 void I001_070_Handler::decode(Asterix1Report& report, std::string_view data) const {
+    const uint8_t* raw = reinterpret_cast<const uint8_t*>(data.data());
+    FastBitReader reader(raw);
+    int bit = 7; // Start at MSB
+
+    // Check for presence/validity: bits 15, 14, and 13 must be zero (0xe000 mask).
+    const bool validated = !reader.readBit(bit);
+    const bool garbled   = reader.readBit(bit);
+    const bool local     = reader.readBit(bit);
+
     uint16_t mode3ATemp;
     std::memcpy(&mode3ATemp, data.data(), 2);
     mode3ATemp = ntohs(mode3ATemp);
 
-    // Check for presence/validity: bits 15, 14, and 13 must be zero (0xe000 mask).
-    const bool validated = !(mode3ATemp & 0x8000);
-    const bool garbled   = mode3ATemp & 0x4000;
-    const bool local     = mode3ATemp & 0x2000;
     // Extract the 12 bits of the Mode 3/A code (0x0fff mask).
     uint16_t mode3A = mode3ATemp & 0x0FFF;
     report.setMode3A(mode3A, validated, garbled, local);
@@ -177,12 +196,16 @@ void I001_070_Handler::decode(Asterix1Report& report, std::string_view data) con
  * @param data The raw data buffer for this item (2 bytes).
  */
 void I001_090_Handler::decode(Asterix1Report& report, std::string_view data) const {
+    const uint8_t* raw = reinterpret_cast<const uint8_t*>(data.data());
+    FastBitReader reader(raw);
+    int bit = 7; // Start at MSB
+
+    const bool v = !reader.readBit(bit);
+    const bool g = reader.readBit(bit);
+
     uint16_t flightLevelTemp;
     std::memcpy(&flightLevelTemp, data.data(), 2);
     flightLevelTemp = ntohs(flightLevelTemp);
-
-    bool v = !(flightLevelTemp & 0x8000);
-    bool g = flightLevelTemp & 0x4000;
 
     // Clear the reserved bits and extract the 14-bit value.
     flightLevelTemp &= 0x3FFF;

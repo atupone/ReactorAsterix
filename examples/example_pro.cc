@@ -56,7 +56,7 @@ int main() {
         0x01, 0x02,             // I001/010: SAC=1, SIC=2
         0x20,                   // I001/020: Target Report Descriptor
         0x00, 0x80, 0x40, 0x00, // I001/040: Range & Azimuth
-        0x00, 0x00,             // I001/070: Mode 3/A
+        0x0f, 0xff,             // I001/070: Mode 3/A
         0x00, 0x00              // I001/090: Mode C
     };
 
