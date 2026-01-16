@@ -102,6 +102,12 @@ class AsterixCategoryHandler : public IAsterixCategoryHandler {
             handlerOwnership.push_back(std::move(h)); // Owner
         }
 
+        template <typename... HandlerTypes>
+        void registerBatch() {
+            // Fold expression expands to addHandler(...) for every type in HandlerTypes
+            (addHandler(std::make_unique<HandlerTypes>(), HandlerTypes::FRN), ...);
+        }
+
         /**
          * @brief Pointer to central diagnostic stats.
          */

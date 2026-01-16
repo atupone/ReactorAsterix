@@ -45,6 +45,7 @@ class Asterix1Report;
  */
 class I001_010_Handler final : public AsterixDataItemHandlerFixedLength<Asterix1Report> {
     public:
+        static constexpr uint8_t FRN = 1;
         I001_010_Handler() : AsterixDataItemHandlerFixedLength<Asterix1Report>(2) {
             name = "I001/010 Data Source Identifier";
             mandatory = true;
@@ -64,6 +65,7 @@ class I001_010_Handler final : public AsterixDataItemHandlerFixedLength<Asterix1
  */
 class I001_020_Handler final : public AsterixDataItemHandlerExtendedLength<Asterix1Report> {
     public:
+        static constexpr uint8_t FRN = 2;
         I001_020_Handler() : AsterixDataItemHandlerExtendedLength<Asterix1Report>(1, 1) {
             name = "I001/020 Target Report Descriptor";
             mandatory = true;
@@ -83,6 +85,7 @@ class I001_020_Handler final : public AsterixDataItemHandlerExtendedLength<Aster
  */
 class I001_040_Handler final : public AsterixDataItemHandlerFixedLength<Asterix1Report> {
     public:
+        static constexpr uint8_t FRN = 3;
         I001_040_Handler() : AsterixDataItemHandlerFixedLength<Asterix1Report>(4) {
             name = "I001/040 Measured Position (Polar)";
         };
@@ -101,6 +104,7 @@ class I001_040_Handler final : public AsterixDataItemHandlerFixedLength<Asterix1
  */
 class I001_070_Handler final : public AsterixDataItemHandlerFixedLength<Asterix1Report> {
     public:
+        static constexpr uint8_t FRN = 4;
         I001_070_Handler() : AsterixDataItemHandlerFixedLength<Asterix1Report>(2) {
             name = "I001/070 Mode-3/A Code";
         }
@@ -119,6 +123,7 @@ class I001_070_Handler final : public AsterixDataItemHandlerFixedLength<Asterix1
  */
 class I001_090_Handler final : public AsterixDataItemHandlerFixedLength<Asterix1Report> {
     public:
+        static constexpr uint8_t FRN = 5;
         I001_090_Handler() : AsterixDataItemHandlerFixedLength<Asterix1Report>(2) {
             name = "I001/090 Mode-C Code (Flight Level)";
         }
@@ -137,6 +142,7 @@ class I001_090_Handler final : public AsterixDataItemHandlerFixedLength<Asterix1
  */
 class I001_130_Handler final : public AsterixDataItemHandlerExtendedLength<Asterix1Report> {
     public:
+        static constexpr uint8_t FRN = 6;
         I001_130_Handler() : AsterixDataItemHandlerExtendedLength<Asterix1Report>(1, 1) {
             name = "I001/130 Radar Plot Characteristics";
         }
@@ -151,6 +157,7 @@ class I001_130_Handler final : public AsterixDataItemHandlerExtendedLength<Aster
  */
 class I001_141_Handler final : public AsterixDataItemHandlerFixedLength<Asterix1Report> {
     public:
+        static constexpr uint8_t FRN = 7;
         I001_141_Handler() : AsterixDataItemHandlerFixedLength<Asterix1Report>(2) {
             name = "I001/141 Truncated Time of Day";
         }
@@ -168,6 +175,7 @@ class I001_141_Handler final : public AsterixDataItemHandlerFixedLength<Asterix1
  */
 class I001_050_Handler final : public AsterixDataItemHandlerFixedLength<Asterix1Report> {
     public:
+        static constexpr uint8_t FRN = 8;
         I001_050_Handler() : AsterixDataItemHandlerFixedLength<Asterix1Report>(2) {
             name = "I001/050 Mode-2 Code";
         }
@@ -179,6 +187,7 @@ class I001_050_Handler final : public AsterixDataItemHandlerFixedLength<Asterix1
  */
 class I001_131_Handler final : public AsterixDataItemHandlerFixedLength<Asterix1Report> {
     public:
+        static constexpr uint8_t FRN = 10;
         I001_131_Handler() : AsterixDataItemHandlerFixedLength<Asterix1Report>(1) {
             name = "I001/131 Received Power";
         }
@@ -190,6 +199,7 @@ class I001_131_Handler final : public AsterixDataItemHandlerFixedLength<Asterix1
  */
 class I001_150_Handler final : public AsterixDataItemHandlerFixedLength<Asterix1Report> {
     public:
+        static constexpr uint8_t FRN = 15;
         I001_150_Handler() : AsterixDataItemHandlerFixedLength<Asterix1Report>(1) {
             name = "I001/150 Presence of X-Pulse";
         }

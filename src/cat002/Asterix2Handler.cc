@@ -43,12 +43,14 @@ Asterix2Handler::Asterix2Handler(std::shared_ptr<SourceStateManager> manager)
  */
 void Asterix2Handler::registerHandlers() {
     // Register handlers at index = FRN - 1.
-    addHandler(std::make_unique<I002_010_Handler>(),  1); // I002/010: Data Source Identifier
-    addHandler(std::make_unique<I002_000_Handler>(),  2); // I002/000: Message Type
-    addHandler(std::make_unique<I002_020_Handler>(),  3); // I002/020: Sector Number
-    addHandler(std::make_unique<I002_030_Handler>(),  4); // I002/030: Time of Day
-    addHandler(std::make_unique<I002_041_Handler>(),  5); // I002/041: Antenna Rotation Speed
-    addHandler(std::make_unique<I002_050_Handler>(),  6); // I002/050: Station Configuration Status
+    registerBatch<
+    I002_010_Handler, // I002/010: Data Source Identifier
+    I002_000_Handler, // I002/000: Message Type
+    I002_020_Handler, // I002/020: Sector Number
+    I002_030_Handler, // I002/030: Time of Day
+    I002_041_Handler, // I002/041: Antenna Rotation Speed
+    I002_050_Handler  // I002/050: Station Configuration Status
+    >();
 }
 
 /**

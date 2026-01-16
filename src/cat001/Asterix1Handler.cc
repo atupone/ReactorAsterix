@@ -46,16 +46,18 @@ Asterix1Handler::Asterix1Handler(std::shared_ptr<SourceStateManager> manager)
  */
 void Asterix1Handler::registerHandlers() {
     // Register handlers at index = FRN - 1.
-    addHandler(std::make_unique<I001_010_Handler>(),  1); // I001/010: Data Source Identifier
-    addHandler(std::make_unique<I001_020_Handler>(),  2); // I001/020: Target Report Descriptor
-    addHandler(std::make_unique<I001_040_Handler>(),  3); // I001/040: Measured Position in Polar Co-ordinates
-    addHandler(std::make_unique<I001_070_Handler>(),  4); // I001/070: Mode-3/A Code in Octal Representation
-    addHandler(std::make_unique<I001_090_Handler>(),  5); // I001/090: Mode-C Code in Binary Representation
-    addHandler(std::make_unique<I001_130_Handler>(),  6); // I001/130: Radar Plot Characteristics
-    addHandler(std::make_unique<I001_141_Handler>(),  7); // I001/141: Truncated Time of Day
-    addHandler(std::make_unique<I001_050_Handler>(),  8); // I001/050: Mode-2 Code in Octal Representation
-    addHandler(std::make_unique<I001_131_Handler>(), 10); // I001/131: Received Power
-    addHandler(std::make_unique<I001_150_Handler>(), 15); // I001/150: Presence of X-Pulse
+    registerBatch<
+        I001_010_Handler, // I001/010: Data Source Identifier
+        I001_020_Handler, // I001/020: Target Report Descriptor
+        I001_040_Handler, // I001/040: Measured Position in Polar Co-ordinates
+        I001_070_Handler, // I001/070: Mode-3/A Code in Octal Representation
+        I001_090_Handler, // I001/090: Mode-C Code in Binary Representation
+        I001_130_Handler, // I001/130: Radar Plot Characteristics
+        I001_141_Handler, // I001/141: Truncated Time of Day
+        I001_050_Handler, // I001/050: Mode-2 Code in Octal Representation
+        I001_131_Handler, // I001/131: Received Power
+        I001_150_Handler  // I001/150: Presence of X-Pulse
+    >();
 }
 
 uint32_t Asterix1Handler::calculateCurrentTod() noexcept {
