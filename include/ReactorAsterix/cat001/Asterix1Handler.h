@@ -24,6 +24,8 @@
 // System headers
 #include <algorithm>
 #include <vector>
+#include <shared_mutex>
+#include <mutex>
 
 // Library headers
 #include <ReactorAsterix/cat001/IAsterix1Listener.h>
@@ -47,6 +49,9 @@ class Asterix1Handler final : public AsterixCategoryHandler<Asterix1Report> {
          * Does not take ownership of the pointer. Duplicate listeners are ignored.
          */
         void addListener(IAsterix1Listener* l) {
+            // EXCLUSIVE LOCK: Only one thread can write at a time
+            std::unique_lock lock(listenerMutex);
+
             if (l && std::find(listeners.begin(), listeners.end(), l) == listeners.end()) {
                 listeners.push_back(l);
             }
@@ -89,6 +94,9 @@ class Asterix1Handler final : public AsterixCategoryHandler<Asterix1Report> {
 
         // Supports multiple sinks (Logger, Tracker, Display)
         std::vector<IAsterix1Listener*> listeners;
+
+        // C++17 Reader-Writer Lock
+        mutable std::shared_mutex listenerMutex;
 
         std::shared_ptr<SourceStateManager> sourceStateManager;
 };

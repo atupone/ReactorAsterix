@@ -78,9 +78,12 @@ size_t Asterix2Handler::processDataRecord(
         // Update state with the radar's actual 32-bit time for the next message
         sourceStateManager->updateSourceTime(report.sourceIdentifier, report.TOD);
 
+        // SHARED LOCK: Multiple threads can read/notify safely
+        // But blocks if someone is currently adding a listener
+        std::shared_lock lock(listenerMutex);
+
         // Notify all registered listeners
         for (auto* listener : listeners) {
-            // Pass a shared_ptr copy to ensure thread safety if listener keeps it
             listener->onReportDecoded(report);
         }
     }
