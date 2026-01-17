@@ -82,7 +82,7 @@ void AsterixPacketHandler::registerCategoryHandler(
  * @param data A pointer to the raw ASTERIX frame data.
  * @param size The total length of the ASTERIX frame data in bytes.
  */
-void AsterixPacketHandler::handlePacket(const uint8_t data[], size_t size) {
+void AsterixPacketHandler::handlePacket(const uint8_t data[], size_t size, struct timespec) {
     // Fast exit for empty packets
     if (!data || size == 0) [[unlikely]] return;
 

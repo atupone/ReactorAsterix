@@ -25,6 +25,7 @@
 #include <new>
 #include <string_view>
 #include <vector>
+#include <atu_reactor/Types.h>
 
 // Library headers
 #include <ReactorAsterix/core/IAsterixCategoryHandler.h>
@@ -55,9 +56,12 @@ class alignas(std::hardware_destructive_interference_size) AsterixPacketHandler 
          */
         static void onPacket(void* context,
                              const uint8_t* data, size_t len,
-                             uint32_t /*flags*/) noexcept {
+                             uint32_t flags,
+                             struct timespec ts) noexcept {
+            if (flags & atu_reactor::PacketStatus::TRUNCATED)
+                return;
             if (auto* instance = static_cast<AsterixPacketHandler*>(context)) {
-                instance->handlePacket(data, len);
+                instance->handlePacket(data, len, ts);
             }
         }
 
@@ -67,7 +71,7 @@ class alignas(std::hardware_destructive_interference_size) AsterixPacketHandler 
          * @param data A pointer to the raw ASTERIX packet data.
          * @param size The total size of the data in bytes.
          */
-        void handlePacket(const uint8_t data[], size_t size);
+        void handlePacket(const uint8_t data[], size_t size, struct timespec ts);
 
         /**
          * @brief Registers a specialized handler for a specific ASTERIX category.

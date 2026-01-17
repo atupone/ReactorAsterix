@@ -60,8 +60,10 @@ int main() {
         0x00, 0x00              // I001/090: Mode C
     };
 
+    struct timespec ts{};
+
     std::cout << "Starting ASTERIX Stream Processing...\n";
-    packetHandler.handlePacket(asterixData.data(), asterixData.size());
+    packetHandler.handlePacket(asterixData.data(), asterixData.size(), ts);
 
     return 0;
 }

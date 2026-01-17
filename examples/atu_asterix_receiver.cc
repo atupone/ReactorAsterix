@@ -25,11 +25,11 @@ public:
  * Static bridge function to convert the raw C-style callback into
  * a call to our C++ AsterixPacketHandler object.
  */
-void asterix_callback_bridge(void* context, const uint8_t* data, size_t size, uint32_t flags) {
+void asterix_callback_bridge(void* context, const uint8_t* data, size_t size, uint32_t flags, struct timespec ts) {
     (void)flags; // Reserved for future use by AtuReactor
     if (context && data && size > 0) {
         auto* handler = static_cast<AsterixPacketHandler*>(context);
-        handler->handlePacket(data, size);
+        handler->handlePacket(data, size, ts);
     }
 }
 
