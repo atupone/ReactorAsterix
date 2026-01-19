@@ -68,7 +68,8 @@ void Asterix2Handler::registerHandlers() {
  */
 size_t Asterix2Handler::processDataRecord(
         std::string_view fspec,
-        std::string_view payload)
+        std::string_view payload,
+        struct timespec)
 {
     // Create the context object (Asterix2Report).
     Asterix2Report report;

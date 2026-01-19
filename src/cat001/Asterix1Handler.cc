@@ -60,26 +60,25 @@ void Asterix1Handler::registerHandlers() {
     >();
 }
 
-uint32_t Asterix1Handler::calculateCurrentTod() noexcept {
-    using namespace std::chrono;
+uint32_t Asterix1Handler::calculateCurrentTod(struct timespec ts) noexcept {
+    // Use the KERNEL timestamp as the fallback/reference
+    // Convert timespec (seconds + nanoseconds) to ASTERIX units (1/128 sec)
 
-    // Get time since epoch
-    auto now = system_clock::now().time_since_epoch();
+    // Get the remainder of the day (0 to 86399)
+    // ts.tv_sec is a 64-bit integer on modern Linux
+    constexpr uint32_t SECONDS_PER_DAY = 86400;
+    uint32_t secondsInDay = static_cast<uint32_t>(ts.tv_sec % SECONDS_PER_DAY);
 
-    // Use floor to get the number of whole days (24h periods) since epoch
-    auto days = floor<duration<int, std::ratio<86400>>>(now);
+    // Convert to 1/128s units using bit-shifts
+    // secondsInDay * 128 (max value ~11 million)
+    uint32_t refTime = secondsInDay << 7;
 
-    // Get the duration since the start of the current day
-    auto since_midnight = now - days;
-
-    // ASTERIX TOD: 1 second = 128 units
-    // We convert the duration since midnight to microseconds first for precision,
-    // then scale to ASTERIX units (1/128s).
-    auto micros = duration_cast<microseconds>(since_midnight).count();
-
-    // 128 / 1,000,000 = 1 / 7812.5
-    // Better to multiply by 128 then divide by 1,000,000 to maintain precision
-    return static_cast<uint32_t>((static_cast<uint64_t>(micros) * 128) / 1000000);
+    // 3. Convert nanoseconds to 1/128s
+    // We use 1e9 as the divisor.
+    // Calculation: (nsec * 128) / 1,000,000,000
+    // Note: (ts.tv_nsec * 128) fits comfortably in a uint64_t
+    refTime += static_cast<uint32_t>((static_cast<uint64_t>(ts.tv_nsec) * 128) / 1000000000);
+    return refTime;
 }
 
 uint32_t Asterix1Handler::expandTruncatedTime(uint16_t todLSP, uint32_t refTOD) noexcept {
@@ -140,7 +139,8 @@ uint32_t Asterix1Handler::expandTruncatedTime(uint16_t todLSP, uint32_t refTOD) 
  */
 size_t Asterix1Handler::processDataRecord(
         std::string_view fspec,
-        std::string_view payload)
+        std::string_view payload,
+        struct timespec ts)
 {
     // Create the context object (Asterix1Report).
     Asterix1Report report;
@@ -152,7 +152,7 @@ size_t Asterix1Handler::processDataRecord(
     if (consumed > 0) {
         // Get the best available 24-bit reference time
         uint32_t ref = sourceStateManager->getReferenceTime(
-                report.sourceIdentifier).value_or(calculateCurrentTod());
+                report.sourceIdentifier).value_or(calculateCurrentTod(ts));
 
         report.TOD = report.hasLspClock
             ? expandTruncatedTime(report.todLSP, ref)

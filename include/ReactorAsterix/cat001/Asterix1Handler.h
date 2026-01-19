@@ -23,9 +23,10 @@
 
 // System headers
 #include <algorithm>
-#include <vector>
-#include <shared_mutex>
+#include <ctime>
 #include <mutex>
+#include <shared_mutex>
+#include <vector>
 
 // Library headers
 #include <ReactorAsterix/cat001/IAsterix1Listener.h>
@@ -78,7 +79,10 @@ class Asterix1Handler final : public AsterixCategoryHandler<Asterix1Report> {
          * @param dataLeft The remaining size of the payload.
          * @return size_t The total number of bytes consumed from the payload.
          */
-        size_t processDataRecord(std::string_view fspec, std::string_view payload) override;
+        size_t processDataRecord(
+                std::string_view fspec,
+                std::string_view payload,
+                struct timespec ts) override;
 
     protected:
         /**
@@ -99,7 +103,7 @@ class Asterix1Handler final : public AsterixCategoryHandler<Asterix1Report> {
         /**
          * @brief Pure logic helper: Gets system time in ASTERIX units.
          */
-        static uint32_t calculateCurrentTod() noexcept;
+        static uint32_t calculateCurrentTod(struct timespec ts) noexcept;
 
         // Supports multiple sinks (Logger, Tracker, Display)
         std::vector<std::weak_ptr<IAsterix1Listener>> listeners;

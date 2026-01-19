@@ -82,7 +82,7 @@ void AsterixPacketHandler::registerCategoryHandler(
  * @param data A pointer to the raw ASTERIX frame data.
  * @param size The total length of the ASTERIX frame data in bytes.
  */
-void AsterixPacketHandler::handlePacket(const uint8_t data[], size_t size, struct timespec) {
+void AsterixPacketHandler::handlePacket(const uint8_t data[], size_t size, struct timespec ts) {
     // Fast exit for empty packets
     if (!data || size == 0) [[unlikely]] return;
 
@@ -94,7 +94,7 @@ void AsterixPacketHandler::handlePacket(const uint8_t data[], size_t size, struc
 
     // Continue processing as long as there is enough data for a minimum header + record
     while (buffer.size() >= Constants::MIN_BLOCK_SIZE) {
-        size_t blockLength = processDataBlock(buffer);
+        size_t blockLength = processDataBlock(buffer, ts);
 
         if (blockLength > 0) {
             buffer.remove_prefix(blockLength);
@@ -123,7 +123,10 @@ void AsterixPacketHandler::handlePacket(const uint8_t data[], size_t size, struc
  * @param dataBlockSize The size of the data block in bytes.
  * @return The total length of the processed data block. Returns 0 on error.
  */
-size_t AsterixPacketHandler::processDataBlock(std::string_view block) {
+size_t AsterixPacketHandler::processDataBlock(
+        std::string_view block,
+        struct timespec ts)
+{
     // Bounds check handled by caller (handlePacket), but double check for safety
     if (block.size() < Constants::HEADER_SIZE) [[unlikely]] return 0;
 
@@ -151,7 +154,7 @@ size_t AsterixPacketHandler::processDataBlock(std::string_view block) {
             // Create a view for the remaining data in this block
             std::string_view remaining = block.substr(offset, length - offset);
 
-            size_t consumed = dispatchRecord(remaining, handler);
+            size_t consumed = dispatchRecord(remaining, handler, ts);
 
             if (consumed > 0) {
                 offset += consumed;
@@ -186,7 +189,11 @@ size_t AsterixPacketHandler::processDataBlock(std::string_view block) {
  * @param handler  The Asterix Category Handler for the specific category
  * @return The total number of bytes consumed by this record, or 0 on error.
  */
-size_t AsterixPacketHandler::dispatchRecord(std::string_view recordView, IAsterixCategoryHandler* handler) {
+size_t AsterixPacketHandler::dispatchRecord(
+        std::string_view recordView,
+        IAsterixCategoryHandler* handler,
+        struct timespec ts)
+{
     const auto* const data = reinterpret_cast<const uint8_t*>(recordView.data());
 
     // Calculate F-Spec size
@@ -238,7 +245,7 @@ size_t AsterixPacketHandler::dispatchRecord(std::string_view recordView, IAsteri
 
     // Handlers should return 0 on failure, not throw exceptions.
     // Polymorphic call into the specific category handler logic.
-    size_t consumed = handler->processDataRecord(fspec, payload);
+    size_t consumed = handler->processDataRecord(fspec, payload, ts);
 
     if (consumed > 0) [[likely]] {
         return fspecSize + consumed;

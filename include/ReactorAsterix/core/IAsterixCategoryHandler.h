@@ -3,6 +3,7 @@
 // System headers
 #include <cstddef>
 #include <cstdint>
+#include <ctime>
 #include <string_view>
 
 namespace ReactorAsterix {
@@ -44,7 +45,8 @@ namespace ReactorAsterix {
              */
             [[nodiscard]]virtual size_t processDataRecord(
                     std::string_view fspec,
-                    std::string_view payload) = 0;
+                    std::string_view payload,
+                    struct timespec ts) = 0;
     };
 
 } // namespace ReactorAsterix

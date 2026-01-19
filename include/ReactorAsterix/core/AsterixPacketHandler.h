@@ -105,7 +105,9 @@ class alignas(std::hardware_destructive_interference_size) AsterixPacketHandler 
          * @return The total length of the processed data block.
          * Returns 0 on error.
          */
-        [[nodiscard]] size_t processDataBlock(std::string_view block);
+        [[nodiscard]] size_t processDataBlock(
+                std::string_view block,
+                struct timespec ts);
 
         /**
          * @brief Internal logic to extract F-spec and hand off to the strategy handler.
@@ -116,7 +118,10 @@ class alignas(std::hardware_destructive_interference_size) AsterixPacketHandler 
          * @return The total number of bytes consumed by this record,
          * or 0 on error.
          */
-        size_t dispatchRecord(std::string_view recordView, IAsterixCategoryHandler* handler);
+        size_t dispatchRecord(
+                std::string_view recordView,
+                IAsterixCategoryHandler* handler,
+                struct timespec ts);
 
         // O(1) lookup table for ASTERIX categories (0-255)
         std::array<IAsterixCategoryHandler*, 256> categoryHandlers{};

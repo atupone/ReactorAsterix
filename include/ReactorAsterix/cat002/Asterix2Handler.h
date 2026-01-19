@@ -78,7 +78,10 @@ class Asterix2Handler final : public AsterixCategoryHandler<Asterix2Report> {
          * @param dataLeft The remaining size of the payload.
          * @return size_t The total number of bytes consumed from the payload.
          */
-        size_t processDataRecord(std::string_view fspec, std::string_view payload) override;
+        size_t processDataRecord(
+                std::string_view fspec,
+                std::string_view payload,
+                struct timespec ts) override;
 
     protected:
         /**
