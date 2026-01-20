@@ -73,6 +73,8 @@ class I002_000_Handler final: public AsterixDataItemHandlerFixedLength<Asterix2R
             mandatory = true;
             name      = "I002/000, Message Type";
         }
+
+        void decode(Asterix2Report& context, std::string_view data) const override;
 };
 
 /**

@@ -36,9 +36,20 @@ class Asterix2Report : public AsterixMessage {
         Asterix2Report() = default;
         ~Asterix2Report() override = default;
 
-      float antennaSpeed;
+        enum class MessageType : uint8_t {
+            NORTH_MARKER = 1,
+            SECTOR_CROSSING = 2,
+            SOUTH_MARKER = 3,
+            ACTIVATION_OF_BLIND_ZONE_FILTERING = 8,
+            STOP_OF_BLIND_ZONE_FILTERING = 9
+        };
+        MessageType messageType{MessageType::NORTH_MARKER};
 
-      void setAntennaSpeed(float speed) { antennaSpeed = speed; };
+        float antennaSpeed;
+
+        // Setters for the handlers to use
+        void setMessageType(uint8_t type) { messageType = static_cast<MessageType>(type); }
+        void setAntennaSpeed(float speed) { antennaSpeed = speed; };
 };
 
 } // namespace ReactorAsterix

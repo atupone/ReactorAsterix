@@ -22,10 +22,9 @@
 #include <ReactorAsterix/cat002/Asterix2Report.h>
 
 // System headers
-#include <algorithm>
-#include <vector>
-#include <shared_mutex>
 #include <mutex>
+#include <shared_mutex>
+#include <vector>
 
 // Library headers
 #include <ReactorAsterix/cat002/IAsterix2Listener.h>
@@ -48,23 +47,7 @@ class Asterix2Handler final : public AsterixCategoryHandler<Asterix2Report> {
          * @brief Adds a listener to the notification list.
          * Does not take ownership of the pointer. Duplicate listeners are ignored.
          */
-        void addListener(std::shared_ptr<IAsterix2Listener> l) {
-            if (!l) return;
-
-            // EXCLUSIVE LOCK: Only one thread can write at a time
-            std::unique_lock lock(listenerMutex);
-
-            // Use find_if to compare the underlying pointers
-            auto it = std::find_if(listeners.begin(), listeners.end(),
-                [&l](const std::weak_ptr<IAsterix2Listener>& existing) {
-                    // lock() gets a shared_ptr; we compare it to our target 'l'
-                    return existing.lock() == l;
-                });
-
-            if (it == listeners.end()) {
-                listeners.push_back(l);
-            }
-        }
+        void addListener(std::shared_ptr<IAsterix2Listener> l);
 
         /**
          * @brief Main function for processing a single record.

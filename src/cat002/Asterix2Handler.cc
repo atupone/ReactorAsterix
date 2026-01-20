@@ -18,13 +18,13 @@
 // Own header
 #include <ReactorAsterix/cat002/Asterix2Handler.h>
 
-// System headers
-#include <stdexcept>
-
 // Library headers
+#include <ReactorAsterix/core/AsterixConstants.h>
 #include <ReactorAsterix/cat002/Asterix2DataItemCollection.h>
 
 namespace ReactorAsterix {
+
+using namespace Constants;
 
 /**
  * @brief Constructor for the ASTERIX Category 2 Handler.
@@ -53,6 +53,24 @@ void Asterix2Handler::registerHandlers() {
     >();
 }
 
+void Asterix2Handler::addListener(std::shared_ptr<IAsterix2Listener> l) {
+    if (!l) return;
+
+    // EXCLUSIVE LOCK: Only one thread can write at a time
+    std::unique_lock lock(listenerMutex);
+
+    // Check if the listener is already present to avoid duplicates
+    auto it = std::find_if(listeners.begin(), listeners.end(),
+        [&l](const std::weak_ptr<IAsterix2Listener>& existing) {
+            // lock() gets a shared_ptr; we compare it to our target 'l'
+            return existing.lock() == l;
+        });
+
+    if (it == listeners.end()) {
+        listeners.push_back(l);
+    }
+}
+
 /**
  * @brief Handles the processing of a single ASTERIX Category 2 data record.
  *
@@ -69,7 +87,7 @@ void Asterix2Handler::registerHandlers() {
 size_t Asterix2Handler::processDataRecord(
         std::string_view fspec,
         std::string_view payload,
-        struct timespec)
+        struct timespec ts)
 {
     // Create the context object (Asterix2Report).
     Asterix2Report report;
@@ -77,10 +95,41 @@ size_t Asterix2Handler::processDataRecord(
     // Decode everything first.
     size_t consumed = this->_processDataRecordInternal(fspec, payload, report);
 
-    if (consumed > 0) {
-        // Update state with the radar's actual 32-bit time for the next message
+    if (consumed == 0 && sourceStateManager) {
+        // ALWAYS update the Radar's 24h clock state (for bit-stitching ref)
         sourceStateManager->updateSourceTime(report.sourceIdentifier, report.TOD);
 
+        // Timing Synchronization Logic: Only triggered by North Marker (Type 1)
+        if (report.messageType == Asterix2Report::MessageType::NORTH_MARKER) {
+
+            // Get seconds since midnight using simple modulo
+            // 86400 seconds in a day
+            uint32_t seconds_since_midnight = static_cast<uint32_t>(ts.tv_sec % 86400);
+
+            // Conversion using the exact integer divisor
+            uint32_t kernel_128th = (seconds_since_midnight * AST_TOD_UNITS_PER_SEC) +
+                static_cast<uint32_t>(static_cast<uint64_t>(ts.tv_nsec) / NS_PER_AST_TOD_UNIT);
+
+            // Calculate difference (Radar - Kernel)
+            int32_t diff = static_cast<int32_t>(report.TOD) - static_cast<int32_t>(kernel_128th);
+
+            // Handle Midnight Wrap using constexpr
+            if (diff > static_cast<int32_t>(AST_TOD_HALFDAY_UNITS)) {
+                diff -= static_cast<int32_t>(AST_TOD_UNITS_PER_DAY);
+            } else if (diff < -static_cast<int32_t>(AST_TOD_HALFDAY_UNITS)) {
+                diff += static_cast<int32_t>(AST_TOD_UNITS_PER_DAY);
+            }
+
+            // Update both reference time and the moving average offset
+            sourceStateManager->updateTimeOffset(report.sourceIdentifier, diff);
+        }
+
+        // CORRECT THE REPORT for the Listeners
+        // Now shift the report's TOD to match System Time
+        int32_t avgOffset = sourceStateManager->getAverageOffset(report.sourceIdentifier);
+        report.TOD = static_cast<uint32_t>(static_cast<int32_t>(report.TOD) - avgOffset);
+
+        // Listener Notification
         {
             // SHARED LOCK: Multiple threads can read/notify safely
             // But blocks if someone is currently adding a listener

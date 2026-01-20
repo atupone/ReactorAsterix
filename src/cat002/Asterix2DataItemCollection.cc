@@ -47,7 +47,13 @@ void I002_010_Handler::decode(Asterix2Report& report, std::string_view data) con
     report.setSourceIdentifier(sac, sic);
 }
 
-// ----------------------------------------------------------------------------------
+/**
+ * @brief Decodes the 1-byte Message Type (I002/000).
+ * 1 = North Marker, 2 = Sector Message
+ */
+void I002_000_Handler::decode(Asterix2Report& context, std::string_view data) const {
+    context.setMessageType(static_cast<uint8_t>(data[0]));
+}
 
 /**
  * @brief Decodes the 3-byte Time of Day (TOD).

@@ -149,7 +149,7 @@ size_t Asterix1Handler::processDataRecord(
     // This populates SAC/SIC and the raw 16-bit LSP Clock (if present).
     size_t consumed = this->_processDataRecordInternal(fspec, payload, report);
 
-    if (consumed > 0) {
+    if (consumed > 0 && sourceStateManager) {
         // Get the best available 24-bit reference time
         uint32_t ref = sourceStateManager->getReferenceTime(
                 report.sourceIdentifier).value_or(calculateCurrentTod(ts));
@@ -158,8 +158,14 @@ size_t Asterix1Handler::processDataRecord(
             ? expandTruncatedTime(report.todLSP, ref)
             : ref;
 
+        // UPDATE MANAGER FIRST (Using raw Radar TOD)
         // Update state with the radar's actual 32-bit time for the next message
         sourceStateManager->updateSourceTime(report.sourceIdentifier, report.TOD);
+
+        // APPLY OFFSET FOR LISTENERS (Transition to System Domain)
+        // Now we shift the report's TOD to match our local Linux clock
+        int32_t avgOffset = sourceStateManager->getAverageOffset(report.sourceIdentifier);
+        report.TOD = static_cast<uint32_t>(static_cast<int32_t>(report.TOD) - avgOffset);
 
         {
             // SHARED LOCK: Multiple threads can read/notify safely
