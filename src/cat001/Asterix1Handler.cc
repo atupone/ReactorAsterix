@@ -154,7 +154,7 @@ size_t Asterix1Handler::processDataRecord(
         uint32_t ref = sourceStateManager->getReferenceTime(
                 report.sourceIdentifier).value_or(calculateCurrentTod(ts));
 
-        report.TOD = report.hasLspClock
+        report.TOD = report.has(Asterix1Report::Presence::HAS_LSP_CLOCK)
             ? expandTruncatedTime(report.todLSP, ref)
             : ref;
 

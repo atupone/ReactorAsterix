@@ -21,9 +21,9 @@ public:
         std::cout << "  Source: SAC=" << static_cast<int>(report.sourceIdentifier.sac) 
                   << " SIC=" << static_cast<int>(report.sourceIdentifier.sic) << "\n";
 
-        if (report.mode3A) {
+        if (report.has(Asterix1Report::Presence::HAS_MODE_3A)) {
              std::cout << "  Mode 3/A: " << std::setfill('0') << std::setw(4) 
-                       << std::oct << report.mode3A->code << std::dec << "\n";
+                       << std::oct << report.mode3A.code << std::dec << "\n";
         }
 
         std::cout << "  Position: " << report.range << "m @ " << report.azimuth << " rad\n" 

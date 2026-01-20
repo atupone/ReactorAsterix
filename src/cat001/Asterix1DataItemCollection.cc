@@ -244,7 +244,7 @@ void I001_090_Handler::decode(Asterix1Report& report, std::string_view data) con
  */
 void I001_141_Handler::decode(Asterix1Report& report, std::string_view data) const {
     report.todLSP = (static_cast<uint16_t>(data[0]) << 8) | data[1];
-    report.hasLspClock = true;
+    report.presenceMask |= Asterix1Report::Presence::HAS_LSP_CLOCK;
 }
 
 } // namespace ReactorAsterix

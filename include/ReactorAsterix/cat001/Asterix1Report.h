@@ -23,7 +23,6 @@
 // System headers
 #include <cstdint>
 #include <cmath>
-#include <optional>
 
 namespace ReactorAsterix {
 
@@ -36,6 +35,14 @@ class Asterix1Report final : public AsterixMessage {
     public:
         Asterix1Report() = default;
         ~Asterix1Report() override = default;
+
+        enum Presence : uint16_t {
+            HAS_MODE_3A   = 1 << 0,
+            HAS_HEIGHT    = 1 << 1,
+            HAS_LSP_CLOCK = 1 << 2
+        };
+
+        uint16_t presenceMask = 0;
 
 // --- Target Report Descriptor bits
         // Enumeration for SSR/PSR
@@ -53,27 +60,28 @@ class Asterix1Report final : public AsterixMessage {
             EMERGENCY = 3
         };
 
-        // SSR / Mode Data
-        struct Mode3A {
-            uint16_t code;
-            bool     validated;
-            bool     garbled;
-            bool     local;
-        };
-
-// ---  Mode-C Code in Binary Representation
-        struct SSRHeight {
-            double height; // meters
-            bool   validated;
-            bool   garbled;
-        };
-
 // ---  Measured Position in Polar Coordinates
         // Physical Data (converted from raw bits)
         double range{0.0};   // Meters
         double azimuth{0.0}; // Radians
-        std::optional<Mode3A> mode3A;
-        std::optional<SSRHeight> ssrHeight;
+
+        // SSR / Mode Data
+        struct {
+            uint16_t code;
+            bool validated : 1;
+            bool garbled   : 1;
+            bool local     : 1;;
+        } mode3A;
+
+// ---  Mode-C Code in Binary Representation
+        struct {
+            double height; // meters
+            bool validated : 1;
+            bool garbled   : 1;
+        } ssrHeight;
+
+        // Check: if (report.has(Asterix1Report::HAS_MODE_3A)) ...
+        bool has(Presence p) const { return presenceMask & p; }
 
         uint16_t todLSP{0};   // I001/141: Truncated Time (LSB = 1/128 s)
 
@@ -81,9 +89,6 @@ class Asterix1Report final : public AsterixMessage {
         DS1DS2_T ds1ds2{DS1DS2_T::DEFAULT};
 
         bool spi{false};
-
-        // Time Data
-        bool hasLspClock{false};
 
 // --- Target Report Descriptor setter
         void setSSR_PSR(int _ssrpsr) {
@@ -100,12 +105,14 @@ class Asterix1Report final : public AsterixMessage {
 
 // --- Mode-3/A Code in Octal Representation setter
         void setMode3A(uint16_t code, bool v, bool g, bool l) {
-            mode3A = Mode3A{code, v, g, l};
+            mode3A = {code, v, g, l};
+            presenceMask |= HAS_MODE_3A;
         }
 
 // --- Mode-C Code in Binary Representation setter
         void setSSRHeight(double height, bool v, bool g) {
-            ssrHeight = SSRHeight{height, v, g};
+            ssrHeight = {height, v, g};
+            presenceMask |= HAS_HEIGHT;
         }
 
         void setTruncatedTimeOfDay(uint16_t tod) {

@@ -23,7 +23,6 @@
 // System headers
 #include <cstdint>
 #include <cmath>
-#include <optional>
 
 namespace ReactorAsterix {
 
