@@ -224,6 +224,54 @@ class AsterixCategoryHandler : public IAsterixCategoryHandler {
             return std::atomic_load(&listeners_);
         }
 
+        // The generic iterator takes a callable 'visitor'
+        template <typename Visitor>
+            size_t iterateFspec(std::string_view fspec, std::string_view& payload, Visitor&& visitor) {
+                // Helper to log and exit
+                auto abortWithStat = [&](std::atomic<uint64_t>& counter) -> size_t {
+                    if (stats_ptr) {
+                        counter.fetch_add(1, std::memory_order_relaxed);
+                    }
+                    return 0;
+                };
+
+                uint16_t frn_base = 1;
+                std::string_view remainingData = payload;
+
+                for (const char c : fspec) {
+                    const uint8_t fspecByte = static_cast<uint8_t>(c);
+
+                    uint8_t itemBits = fspecByte & 0xFE; // Strip FX bit
+
+                    // Quick exit if no items in this byte
+                    while (itemBits) {
+                        // Get the index (0-6) of the highest set bit
+                        int offset = __builtin_clz(static_cast<uint32_t>(itemBits) << 24);
+                        uint16_t currentFrn = static_cast<uint16_t>(frn_base + offset);
+
+                        // Call the visitor (Lambda or Functor)
+                        // If visitor returns false, we stop? Or just continue?
+                        // Usually we continue unless parsing failed (visitor updates payload view)
+                        if (!visitor(currentFrn, payload)) {
+                            return 0; // Error signaled by visitor
+                        }
+
+                        // Clear the bit we just processed to find the next one
+                        itemBits &= static_cast<uint8_t>(~(0x80 >> offset));
+                    }
+
+                    // If the FX bit (0x01) is NOT set, this is the last F-spec byte
+                    if (!(fspecByte & 0x01)) {
+                        return payload.size() - remainingData.size();
+                    }
+
+                    frn_base += 7;
+                }
+
+                // If we reach here, the loop finished but the last byte had FX=1
+                return abortWithStat(stats_ptr->malformedRecords);
+            }
+
     private:
         std::shared_ptr<ListenerList> listeners_{std::make_shared<ListenerList>()};
         std::mutex writeMutex_; // Only for writers (addListener)

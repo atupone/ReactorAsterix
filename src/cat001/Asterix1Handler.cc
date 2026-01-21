@@ -146,10 +146,6 @@ size_t Asterix1Handler::_processDataRecordInternal(
         std::string_view payload,
         Asterix1Report& context) {
 
-    uint16_t frn_base = 1;
-
-    std::string_view remainingData = payload;
-
     // Helper to log and exit
     auto abortWithStat = [&](std::atomic<uint64_t>& counter) -> size_t {
         if (stats_ptr) {
@@ -163,34 +159,11 @@ size_t Asterix1Handler::_processDataRecordInternal(
         return abortWithStat(stats_ptr->protocolViolations);
     }
 
-    // Loop through each byte of the F-spec.
-    for (const char c : fspec) {
-        const uint8_t fspecByte = static_cast<uint8_t>(c);
-
-        uint8_t itemBits = fspecByte & 0xFE; // Strip FX bit
-
-        // Quick exit if no items in this byte
-        while (itemBits) {
-            // Get the index (0-6) of the highest set bit
-            int offset = __builtin_clz(static_cast<uint32_t>(itemBits) << 24);
-            uint16_t currentFrn = static_cast<uint16_t>(frn_base + offset);
-
-            dispatch(currentFrn, context, remainingData);
-
-            // Clear the bit we just processed to find the next one
-            itemBits &= static_cast<uint8_t>(~(0x80 >> offset));
-        }
-
-        // If the FX bit (0x01) is NOT set, this is the last F-spec byte
-        if (!(fspecByte & 0x01)) {
-            return payload.size() - remainingData.size();
-        }
-
-        frn_base += 7;
-    }
-
-    // If we reach here, the loop finished but the last byte had FX=1
-    return abortWithStat(stats_ptr->malformedRecords);
+    // We pass a lambda that acts as the "Switch Dispatcher"
+    return iterateFspec(fspec, payload, [&](uint16_t frn, std::string_view& data) {
+        // This lambda replaces the virtual dispatch loop
+        return this->dispatch(frn, context, data);
+    });
 }
 
 /**
