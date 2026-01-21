@@ -21,11 +21,6 @@
 #include <ReactorAsterix/core/AsterixCategoryHandler.h>
 #include <ReactorAsterix/cat002/Asterix2Report.h>
 
-// System headers
-#include <mutex>
-#include <shared_mutex>
-#include <vector>
-
 // Library headers
 #include <ReactorAsterix/core/SourceStateManager.h>
 #include <ReactorAsterix/cat002/IAsterix2Listener.h>
@@ -37,18 +32,12 @@ namespace ReactorAsterix {
  * @class Asterix2Handler
  * @brief Handles ASTERIX Category 2: Monoradar Service Messages.
  */
-class Asterix2Handler final : public AsterixCategoryHandler<Asterix2Report> {
+class Asterix2Handler final : public AsterixCategoryHandler<Asterix2Report, IAsterix2Listener> {
     public:
         /**
          * @brief Constructor that initializes the data item handlers.
          */
         explicit Asterix2Handler(std::shared_ptr<SourceStateManager> manager);
-
-        /**
-         * @brief Adds a listener to the notification list.
-         * Does not take ownership of the pointer. Duplicate listeners are ignored.
-         */
-        void addListener(std::shared_ptr<IAsterix2Listener> l);
 
         /**
          * @brief Main function for processing a single record.

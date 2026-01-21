@@ -21,13 +21,6 @@
 #include <ReactorAsterix/core/AsterixCategoryHandler.h>
 #include <ReactorAsterix/cat001/Asterix1Report.h>
 
-// System headers
-#include <algorithm>
-#include <ctime>
-#include <mutex>
-#include <shared_mutex>
-#include <vector>
-
 // Library headers
 #include <ReactorAsterix/core/SourceStateManager.h>
 #include <ReactorAsterix/cat001/IAsterix1Listener.h>
@@ -39,34 +32,12 @@ namespace ReactorAsterix {
  * @class Asterix1Handler
  * @brief Handles ASTERIX Category 1: Monoradar Target Reports.
  */
-class Asterix1Handler final : public AsterixCategoryHandler<Asterix1Report> {
+class Asterix1Handler final : public AsterixCategoryHandler<Asterix1Report, IAsterix1Listener> {
     public:
         /**
          * @brief Constructor that initializes the data item handlers.
          */
         explicit Asterix1Handler(std::shared_ptr<SourceStateManager> manager);
-
-        /**
-         * @brief Adds a listener to the notification list.
-         * Does not take ownership of the pointer. Duplicate listeners are ignored.
-         */
-        void addListener(std::shared_ptr<IAsterix1Listener> l) {
-            if (!l) return;
-
-            // EXCLUSIVE LOCK: Only one thread can write at a time
-            std::unique_lock lock(listenerMutex);
-
-            // Use find_if to compare the underlying pointers
-            auto it = std::find_if(listeners.begin(), listeners.end(),
-                [&l](const std::weak_ptr<IAsterix1Listener>& existing) {
-                    // lock() gets a shared_ptr; we compare it to our target 'l'
-                    return existing.lock() == l;
-                });
-
-            if (it == listeners.end()) {
-                listeners.push_back(l);
-            }
-        }
 
         /**
          * @brief Main function for processing a single record.
@@ -117,12 +88,6 @@ class Asterix1Handler final : public AsterixCategoryHandler<Asterix1Report> {
          * will likely INLINE these calls.
          */
         bool dispatch(int frn, Asterix1Report& report, std::string_view& data);
-
-        // Supports multiple sinks (Logger, Tracker, Display)
-        std::vector<std::weak_ptr<IAsterix1Listener>> listeners;
-
-        // C++17 Reader-Writer Lock
-        mutable std::shared_mutex listenerMutex;
 
         std::shared_ptr<SourceStateManager> sourceStateManager;
 

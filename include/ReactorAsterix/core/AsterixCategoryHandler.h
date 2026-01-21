@@ -24,6 +24,7 @@
 #include <algorithm>
 #include <array>
 #include <memory>
+#include <mutex>
 #include <vector>
 
 // Libray headers
@@ -57,7 +58,7 @@ template<typename H, typename R>
  * @brief Base template for specific category handlers (e.g., Cat 001).
  * @tparam T The Record type (context) this handler populates.
  */
-template <typename T>
+template <typename T, typename ListenerInterface>
 class AsterixCategoryHandler : public IAsterixCategoryHandler {
     public:
         /**
@@ -70,6 +71,48 @@ class AsterixCategoryHandler : public IAsterixCategoryHandler {
          * @brief Links the central statistics to this handler.
          */
         void setStats(AsterixStats& s) override;
+
+        using ListenerList = std::vector<std::weak_ptr<ListenerInterface>>;
+
+        void addListener(std::shared_ptr<ListenerInterface> l) {
+            if (!l) return;
+
+            // Mutex only blocks other writers (addListener/removeListener)
+            std::lock_guard<std::mutex> lock(writeMutex_);
+
+            // Load current list
+            auto current = std::atomic_load(&listeners_);
+
+            // Create a copy (COW)
+            auto next = std::make_shared<ListenerList>(*current);
+
+            // Clean up expired while adding new
+            next->erase(std::remove_if(next->begin(), next->end(),
+                [](const std::weak_ptr<ListenerInterface>& wp) { return wp.expired(); }),
+                next->end());
+
+            // Add new listener
+            next->push_back(l);
+
+            // Atomic store
+            std::atomic_store(&listeners_, next);
+        }
+
+        void removeListener(std::shared_ptr<ListenerInterface> l) {
+            if (!l) return;
+            std::lock_guard<std::mutex> lock(writeMutex_);
+
+            auto current = std::atomic_load(&listeners_);
+            auto next = std::make_shared<ListenerList>(*current);
+
+            next->erase(std::remove_if(next->begin(), next->end(),
+                [&l](const std::weak_ptr<ListenerInterface>& wp) {
+                    auto sp = wp.lock();
+                    return !sp || sp == l;
+                }), next->end());
+
+            std::atomic_store(&listeners_, next);
+        }
 
     protected:
         // Pre-computed F-spec where bits are 1 if the item is mandatory
@@ -175,10 +218,19 @@ class AsterixCategoryHandler : public IAsterixCategoryHandler {
                 std::string_view fspec,
                 std::string_view payload,
                 T& context);
+
+        // This allows derived classes (Cat001, Cat002) to get the snapshot
+        std::shared_ptr<ListenerList> getListeners() const {
+            return std::atomic_load(&listeners_);
+        }
+
+    private:
+        std::shared_ptr<ListenerList> listeners_{std::make_shared<ListenerList>()};
+        std::mutex writeMutex_; // Only for writers (addListener)
 };
 
-template <typename T>
-bool AsterixCategoryHandler<T>::checkMandatoryItems(std::string_view fspec) {
+template <typename T, typename ListenerInterface>
+bool AsterixCategoryHandler<T, ListenerInterface>::checkMandatoryItems(std::string_view fspec) {
 
     // 1. Validate Mandatory Fields
     if (fspec.size() < mandatoryFspecSize) [[unlikely]] {
@@ -195,8 +247,8 @@ bool AsterixCategoryHandler<T>::checkMandatoryItems(std::string_view fspec) {
     return true;
 }
 
-template <typename T>
-size_t AsterixCategoryHandler<T>::_processDataRecordInternal(
+template <typename T, typename ListenerInterface>
+size_t AsterixCategoryHandler<T, ListenerInterface>::_processDataRecordInternal(
         std::string_view fspec,
         std::string_view payload,
         T& context) {
@@ -269,8 +321,8 @@ size_t AsterixCategoryHandler<T>::_processDataRecordInternal(
     return abortWithStat(stats_ptr->malformedRecords);
 }
 
-template <typename T>
-void AsterixCategoryHandler<T>::setStats(AsterixStats& s) {
+template <typename T, typename ListenerInterface>
+void AsterixCategoryHandler<T, ListenerInterface>::setStats(AsterixStats& s) {
     this->stats_ptr = &s; // Store local pointer
     for (auto& handler : itemLookup) {
         if (handler) {

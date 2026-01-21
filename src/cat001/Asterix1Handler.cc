@@ -18,10 +18,6 @@
 // Own header
 #include <ReactorAsterix/cat001/Asterix1Handler.h>
 
-// System headers
-#include <cmath>
-#include <chrono>
-
 namespace ReactorAsterix {
 
 /**
@@ -233,7 +229,7 @@ size_t Asterix1Handler::processDataRecord(
             : ref;
 
         // UPDATE MANAGER FIRST (Using raw Radar TOD)
-        // Update state with the radar's actual 32-bit time for the next message
+        // ALWAYS update the Radar's 24h clock state (for bit-stitching ref)
         sourceStateManager->updateSourceTime(report.sourceIdentifier, report.TOD);
 
         // APPLY OFFSET FOR LISTENERS (Transition to System Domain)
@@ -241,30 +237,16 @@ size_t Asterix1Handler::processDataRecord(
         int32_t avgOffset = sourceStateManager->getAverageOffset(report.sourceIdentifier);
         report.TOD = static_cast<uint32_t>(static_cast<int32_t>(report.TOD) - avgOffset);
 
-        {
-            // SHARED LOCK: Multiple threads can read/notify safely
-            // But blocks if someone is currently adding a listener
-            std::shared_lock lock(listenerMutex);
+        // LOCK-FREE NOTIFICATION
+        // Just take a reference to the current list.
+        // Even if a writer updates 'listeners' now, we safely iterate our local 'snapshot'.
+        auto currentListeners = this->getListeners();
 
-            // Notify all valid listeners
-            for (const auto& wp : listeners) {
-                if (auto sp = wp.lock()) {
-                    sp->onReportDecoded(report);
-                }
+        // Notify all valid listeners
+        for (const auto& wp : *currentListeners) {
+            if (auto sp = wp.lock()) {
+                sp->onReportDecoded(report);
             }
-        } // Release lock here
-
-        // Cleanup expired listeners cleanly (Need a write lock now)
-        // Note: You might defer this to happen less frequently to avoid lock contention
-        {
-            std::unique_lock lock(listenerMutex);
-            listeners.erase(
-                std::remove_if(listeners.begin(), listeners.end(),
-                    [](const std::weak_ptr<IAsterix1Listener>& wp) {
-                        return wp.expired();
-                    }),
-                listeners.end()
-            );
         }
     }
 

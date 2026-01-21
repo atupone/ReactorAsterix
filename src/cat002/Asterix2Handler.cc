@@ -52,24 +52,6 @@ void Asterix2Handler::registerHandlers() {
     >();
 }
 
-void Asterix2Handler::addListener(std::shared_ptr<IAsterix2Listener> l) {
-    if (!l) return;
-
-    // EXCLUSIVE LOCK: Only one thread can write at a time
-    std::unique_lock lock(listenerMutex);
-
-    // Check if the listener is already present to avoid duplicates
-    auto it = std::find_if(listeners.begin(), listeners.end(),
-        [&l](const std::weak_ptr<IAsterix2Listener>& existing) {
-            // lock() gets a shared_ptr; we compare it to our target 'l'
-            return existing.lock() == l;
-        });
-
-    if (it == listeners.end()) {
-        listeners.push_back(l);
-    }
-}
-
 bool Asterix2Handler::dispatch(int frn, Asterix2Report& report, std::string_view& data) {
     switch (frn) {
         case 1:  if (execute(m_i010, report, data)) return true; break;
@@ -196,36 +178,21 @@ size_t Asterix2Handler::processDataRecord(
             sourceStateManager->updateTimeOffset(report.sourceIdentifier, diff);
         }
 
-        // CORRECT THE REPORT for the Listeners
-        // Now shift the report's TOD to match System Time
+        // APPLY OFFSET FOR LISTENERS (Transition to System Domain)
+        // Now we shift the report's TOD to match our local Linux clock
         int32_t avgOffset = sourceStateManager->getAverageOffset(report.sourceIdentifier);
         report.TOD = static_cast<uint32_t>(static_cast<int32_t>(report.TOD) - avgOffset);
 
-        // Listener Notification
-        {
-            // SHARED LOCK: Multiple threads can read/notify safely
-            // But blocks if someone is currently adding a listener
-            std::shared_lock lock(listenerMutex);
+        // LOCK-FREE NOTIFICATION
+        // Just take a reference to the current list.
+        // Even if a writer updates 'listeners' now, we safely iterate our local 'snapshot'.
+        auto currentListeners = this->getListeners();
 
-            // Notify all valid listeners
-            for (const auto& wp : listeners) {
-                if (auto sp = wp.lock()) {
-                    sp->onReportDecoded(report);
-                }
+        // Notify all valid listeners
+        for (const auto& wp : *currentListeners) {
+            if (auto sp = wp.lock()) {
+                sp->onReportDecoded(report);
             }
-        } // Release lock here
-
-        // Cleanup expired listeners cleanly (Need a write lock now)
-        // Note: You might defer this to happen less frequently to avoid lock contention
-        {
-            std::unique_lock lock(listenerMutex);
-            listeners.erase(
-                std::remove_if(listeners.begin(), listeners.end(),
-                    [](const std::weak_ptr<IAsterix2Listener>& wp) {
-                        return wp.expired();
-                    }),
-                listeners.end()
-            );
         }
     }
 
