@@ -29,8 +29,9 @@
 #include <vector>
 
 // Library headers
-#include <ReactorAsterix/cat001/IAsterix1Listener.h>
 #include <ReactorAsterix/core/SourceStateManager.h>
+#include <ReactorAsterix/cat001/IAsterix1Listener.h>
+#include <ReactorAsterix/cat001/Asterix1DataItemCollection.h>
 
 namespace ReactorAsterix {
 
@@ -105,6 +106,18 @@ class Asterix1Handler final : public AsterixCategoryHandler<Asterix1Report> {
          */
         static uint32_t calculateCurrentTod(struct timespec ts) noexcept;
 
+        size_t _processDataRecordInternal(
+                std::string_view fspec,
+                std::string_view payload,
+                Asterix1Report& report);
+
+        /**
+         * @brief This is the "Hot Path".
+         * Because we call methods on named members, the compiler
+         * will likely INLINE these calls.
+         */
+        bool dispatch(int frn, Asterix1Report& report, std::string_view& data);
+
         // Supports multiple sinks (Logger, Tracker, Display)
         std::vector<std::weak_ptr<IAsterix1Listener>> listeners;
 
@@ -112,6 +125,18 @@ class Asterix1Handler final : public AsterixCategoryHandler<Asterix1Report> {
         mutable std::shared_mutex listenerMutex;
 
         std::shared_ptr<SourceStateManager> sourceStateManager;
+
+        // --- Data Item Handlers (Statically Named) ---
+        I001_010_Handler m_i010;
+        I001_020_Handler m_i020;
+        I001_040_Handler m_i040;
+        I001_070_Handler m_i070;
+        I001_090_Handler m_i090;
+        I001_130_Handler m_i130;
+        I001_141_Handler m_i141;
+        I001_050_Handler m_i050;
+        I001_131_Handler m_i131;
+        I001_150_Handler m_i150;
 };
 
 } // namespace ReactorAsterix

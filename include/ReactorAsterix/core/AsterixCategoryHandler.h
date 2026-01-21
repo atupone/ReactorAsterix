@@ -33,6 +33,26 @@
 namespace ReactorAsterix {
 
 /**
+ * @brief Helper to handle the "Boilerplate" of getting size and decoding.
+ * Making this a template ensures the compiler knows the EXACT type of 'H' and 'R'.
+ */
+template<typename H, typename R>
+    bool execute(H& handler, R& report, std::string_view& data) {
+        // Determine item size and check buffer bounds.
+        auto itemSize = handler.getSize(data);
+        if (itemSize > data.size()) [[unlikely]] {
+            // Not enough data was found in the payload for this item.
+            return false;
+        }
+
+        // Decode the data into the context object and advance pointers.
+        handler.decode(report, data.substr(0, itemSize));
+
+        data.remove_prefix(itemSize);
+        return true;
+    }
+
+/**
  * @class AsterixCategoryHandler
  * @brief Base template for specific category handlers (e.g., Cat 001).
  * @tparam T The Record type (context) this handler populates.
@@ -134,6 +154,8 @@ class AsterixCategoryHandler : public IAsterixCategoryHandler {
          */
         std::vector<std::unique_ptr<IAsterixDataItemHandler<T>>> handlerOwnership;
 
+        [[nodiscard]]bool checkMandatoryItems(std::string_view fspec);
+
         /**
          * @brief Internal method that handles the F-spec parsing and data decoding.
          *
@@ -156,6 +178,24 @@ class AsterixCategoryHandler : public IAsterixCategoryHandler {
 };
 
 template <typename T>
+bool AsterixCategoryHandler<T>::checkMandatoryItems(std::string_view fspec) {
+
+    // 1. Validate Mandatory Fields
+    if (fspec.size() < mandatoryFspecSize) [[unlikely]] {
+        return false;
+    }
+
+    // 2nd Check: Detailed bit-level comparison
+    for (size_t i = 0; i < mandatoryFspecSize; ++i) {
+        // (required & ~received) identifies mandatory bits NOT present in received F-spec.
+        if (mandatoryFspec[i] & ~static_cast<uint8_t>(fspec[i])) [[unlikely]] {
+            return false;
+        }
+    }
+    return true;
+}
+
+template <typename T>
 size_t AsterixCategoryHandler<T>::_processDataRecordInternal(
         std::string_view fspec,
         std::string_view payload,
@@ -173,17 +213,9 @@ size_t AsterixCategoryHandler<T>::_processDataRecordInternal(
         return 0;
     };
 
-    // 1. Validate Mandatory Fields
-    if (fspec.size() < mandatoryFspecSize) [[unlikely]] {
+    // Validate Mandatory Fields
+    if (!checkMandatoryItems(fspec)) [[unlikely]] {
         return abortWithStat(stats_ptr->protocolViolations);
-    }
-
-    // 2nd Check: Detailed bit-level comparison
-    for (size_t i = 0; i < mandatoryFspecSize; ++i) {
-        // (required & ~received) identifies mandatory bits NOT present in received F-spec.
-        if (mandatoryFspec[i] & ~static_cast<uint8_t>(fspec[i])) [[unlikely]] {
-            return abortWithStat(stats_ptr->protocolViolations);
-        }
     }
 
     // Loop through each byte of the F-spec.

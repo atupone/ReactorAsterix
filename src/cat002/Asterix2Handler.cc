@@ -20,7 +20,6 @@
 
 // Library headers
 #include <ReactorAsterix/core/AsterixConstants.h>
-#include <ReactorAsterix/cat002/Asterix2DataItemCollection.h>
 
 namespace ReactorAsterix {
 
@@ -69,6 +68,79 @@ void Asterix2Handler::addListener(std::shared_ptr<IAsterix2Listener> l) {
     if (it == listeners.end()) {
         listeners.push_back(l);
     }
+}
+
+bool Asterix2Handler::dispatch(int frn, Asterix2Report& report, std::string_view& data) {
+    switch (frn) {
+        case 1:  if (execute(m_i010, report, data)) return true; break;
+        case 2:  if (execute(m_i000, report, data)) return true; break;
+        case 3:  if (execute(m_i020, report, data)) return true; break;
+        case 4:  if (execute(m_i030, report, data)) return true; break;
+        case 5:  if (execute(m_i041, report, data)) return true; break;
+        case 6:  if (execute(m_i050, report, data)) return true; break;
+        default:
+            // Update stats for missing decoder.
+            if (stats_ptr) {
+                stats_ptr->unhandledItems.fetch_add(1, std::memory_order_relaxed);
+            }
+            return false;
+    }
+    if (stats_ptr) {
+        stats_ptr->malformedRecords.fetch_add(1, std::memory_order_relaxed);
+    }
+    return false;
+}
+
+size_t Asterix2Handler::_processDataRecordInternal(
+        std::string_view fspec,
+        std::string_view payload,
+        Asterix2Report& context) {
+
+    uint16_t frn_base = 1;
+
+    std::string_view remainingData = payload;
+
+    // Helper to log and exit
+    auto abortWithStat = [&](std::atomic<uint64_t>& counter) -> size_t {
+        if (stats_ptr) {
+            counter.fetch_add(1, std::memory_order_relaxed);
+        }
+        return 0;
+    };
+
+    // Validate Mandatory Fields
+    if (!checkMandatoryItems(fspec)) [[unlikely]] {
+        return abortWithStat(stats_ptr->protocolViolations);
+    }
+
+    // Loop through each byte of the F-spec.
+    for (const char c : fspec) {
+        const uint8_t fspecByte = static_cast<uint8_t>(c);
+
+        uint8_t itemBits = fspecByte & 0xFE; // Strip FX bit
+
+        // Quick exit if no items in this byte
+        while (itemBits) {
+            // Get the index (0-6) of the highest set bit
+            int offset = __builtin_clz(static_cast<uint32_t>(itemBits) << 24);
+            uint16_t currentFrn = static_cast<uint16_t>(frn_base + offset);
+
+            dispatch(currentFrn, context, remainingData);
+
+            // Clear the bit we just processed to find the next one
+            itemBits &= static_cast<uint8_t>(~(0x80 >> offset));
+        }
+
+        // If the FX bit (0x01) is NOT set, this is the last F-spec byte
+        if (!(fspecByte & 0x01)) {
+            return payload.size() - remainingData.size();
+        }
+
+        frn_base += 7;
+    }
+
+    // If we reach here, the loop finished but the last byte had FX=1
+    return abortWithStat(stats_ptr->malformedRecords);
 }
 
 /**

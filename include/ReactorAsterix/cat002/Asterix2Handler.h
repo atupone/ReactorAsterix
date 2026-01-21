@@ -27,8 +27,9 @@
 #include <vector>
 
 // Library headers
-#include <ReactorAsterix/cat002/IAsterix2Listener.h>
 #include <ReactorAsterix/core/SourceStateManager.h>
+#include <ReactorAsterix/cat002/IAsterix2Listener.h>
+#include <ReactorAsterix/cat002/Asterix2DataItemCollection.h>
 
 namespace ReactorAsterix {
 
@@ -76,6 +77,18 @@ class Asterix2Handler final : public AsterixCategoryHandler<Asterix2Report> {
         void registerHandlers() override;
 
     private:
+        size_t _processDataRecordInternal(
+                std::string_view fspec,
+                std::string_view payload,
+                Asterix2Report& report);
+
+        /**
+         * @brief This is the "Hot Path".
+         * Because we call methods on named members, the compiler
+         * will likely INLINE these calls.
+         */
+        bool dispatch(int frn, Asterix2Report& report, std::string_view& data);
+
         // Supports multiple sinks (Logger, Tracker, Display)
         std::vector<std::weak_ptr<IAsterix2Listener>> listeners;
 
@@ -83,6 +96,14 @@ class Asterix2Handler final : public AsterixCategoryHandler<Asterix2Report> {
         mutable std::shared_mutex listenerMutex;
 
         std::shared_ptr<SourceStateManager> sourceStateManager;
+
+        // --- Data Item Handlers (Statically Named) ---
+        I002_010_Handler m_i010;
+        I002_000_Handler m_i000;
+        I002_020_Handler m_i020;
+        I002_030_Handler m_i030;
+        I002_041_Handler m_i041;
+        I002_050_Handler m_i050;
 };
 
 } // namespace ReactorAsterix
