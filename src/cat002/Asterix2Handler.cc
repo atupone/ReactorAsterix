@@ -95,7 +95,7 @@ size_t Asterix2Handler::processDataRecord(
     // Decode everything first.
     size_t consumed = this->_processDataRecordInternal(fspec, payload, report);
 
-    if (consumed == 0 && sourceStateManager) {
+    if (consumed > 0 && sourceStateManager) {
         // ALWAYS update the Radar's 24h clock state (for bit-stitching ref)
         sourceStateManager->updateSourceTime(report.sourceIdentifier, report.TOD);
 
