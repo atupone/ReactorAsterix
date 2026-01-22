@@ -30,6 +30,13 @@ struct SourceIdentifier {
     uint8_t sac;
     uint8_t sic;
 
+    // Equality is more frequent than 'less-than' in a vector-based search
+    bool operator==(const SourceIdentifier& o) const noexcept {
+        // Compiler will optimize this to a single 16-bit integer comparison
+        return sac == o.sac && sic == o.sic;
+    }
+
+    // Keep 'less-than' only if you still need sorting or map compatibility
     bool operator<(const SourceIdentifier& other) const {
         return std::tie(sac, sic) < std::tie(other.sac, other.sic);
     }

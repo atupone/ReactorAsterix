@@ -103,42 +103,57 @@ size_t Asterix2Handler::processDataRecord(
     // Create the context object (Asterix2Report).
     Asterix2Report report;
 
+    // Set the manager pointer so the report can resolve itself later
+    // This is the "secret sauce" that allows the decoders to stay unchanged.
+    report.manager = this->sourceStateManager.get();
+
     // Decode everything first.
     size_t consumed = this->_processDataRecordInternal(fspec, payload, report);
 
-    if (consumed > 0 && sourceStateManager) {
-        // ALWAYS update the Radar's 24h clock state (for bit-stitching ref)
-        sourceStateManager->updateSourceTime(report.sourceIdentifier, report.TOD);
+    if (consumed > 0) {
+        if (report.sourceRecord) {
+            // ALWAYS update the Radar's 24h clock state (for bit-stitching ref)
+            report.sourceRecord->lastTod = report.TOD;
 
-        // Timing Synchronization Logic: Only triggered by North Marker (Type 1)
-        if (report.messageType == Asterix2Report::MessageType::NORTH_MARKER) {
+            // Timing Synchronization Logic: Only triggered by North Marker (Type 1)
+            if (report.messageType == Asterix2Report::MessageType::NORTH_MARKER) {
 
-            // Get seconds since midnight using simple modulo
-            // 86400 seconds in a day
-            uint32_t seconds_since_midnight = static_cast<uint32_t>(ts.tv_sec % 86400);
+                // Get seconds since midnight using simple modulo
+                // 86400 seconds in a day
+                uint32_t seconds_since_midnight = static_cast<uint32_t>(ts.tv_sec % 86400);
 
-            // Conversion using the exact integer divisor
-            uint32_t kernel_128th = (seconds_since_midnight * AST_TOD_UNITS_PER_SEC) +
-                static_cast<uint32_t>(static_cast<uint64_t>(ts.tv_nsec) / NS_PER_AST_TOD_UNIT);
+                // Conversion using the exact integer divisor
+                uint32_t kernel_128th = (seconds_since_midnight * AST_TOD_UNITS_PER_SEC) +
+                    static_cast<uint32_t>(static_cast<uint64_t>(ts.tv_nsec) / NS_PER_AST_TOD_UNIT);
 
-            // Calculate difference (Radar - Kernel)
-            int32_t diff = static_cast<int32_t>(report.TOD) - static_cast<int32_t>(kernel_128th);
+                // Calculate difference (Radar - Kernel)
+                int32_t diff = static_cast<int32_t>(report.TOD) - static_cast<int32_t>(kernel_128th);
 
-            // Handle Midnight Wrap using constexpr
-            if (diff > static_cast<int32_t>(AST_TOD_HALFDAY_UNITS)) {
-                diff -= static_cast<int32_t>(AST_TOD_UNITS_PER_DAY);
-            } else if (diff < -static_cast<int32_t>(AST_TOD_HALFDAY_UNITS)) {
-                diff += static_cast<int32_t>(AST_TOD_UNITS_PER_DAY);
+                // Handle Midnight Wrap using constexpr
+                if (diff > static_cast<int32_t>(AST_TOD_HALFDAY_UNITS)) {
+                    diff -= static_cast<int32_t>(AST_TOD_UNITS_PER_DAY);
+                } else if (diff < -static_cast<int32_t>(AST_TOD_HALFDAY_UNITS)) {
+                    diff += static_cast<int32_t>(AST_TOD_UNITS_PER_DAY);
+                }
+
+                // Update both reference time and the moving average offset
+                sourceStateManager->updateTimeOffset(report.sourceIdentifier, diff);
             }
 
-            // Update both reference time and the moving average offset
-            sourceStateManager->updateTimeOffset(report.sourceIdentifier, diff);
-        }
+            // APPLY OFFSET FOR LISTENERS (Transition to System Domain)
+            // Now we shift the report's TOD to match our local Linux clock
+            int32_t corrected = static_cast<int32_t>(report.TOD) -
+                report.sourceRecord->averageOffset;
 
-        // APPLY OFFSET FOR LISTENERS (Transition to System Domain)
-        // Now we shift the report's TOD to match our local Linux clock
-        int32_t avgOffset = sourceStateManager->getAverageOffset(report.sourceIdentifier);
-        report.TOD = static_cast<uint32_t>(static_cast<int32_t>(report.TOD) - avgOffset);
+            constexpr int32_t TICKS_PER_DAY = 86400 * 128;
+            if (corrected < 0) {
+                corrected += TICKS_PER_DAY; // Handle positive offset near midnight
+            } else if (corrected >= TICKS_PER_DAY) {
+                corrected -= TICKS_PER_DAY; // Handle negative offset near midnight
+            }
+
+            report.TOD = static_cast<uint32_t>(corrected);
+        }
 
         // LOCK-FREE NOTIFICATION
         // Just take a reference to the current list.

@@ -23,6 +23,7 @@
 
 // Library headers
 #include <ReactorAsterix/core/SourceIdentifier.h>
+#include <ReactorAsterix/core/SourceStateManager.h>
 
 namespace ReactorAsterix {
 
@@ -36,6 +37,12 @@ class AsterixMessage {
         AsterixMessage() = default;
         virtual ~AsterixMessage() = default;
 
+        // Temporary link to the manager, set by the Handler at creation
+        SourceStateManager* manager = nullptr;
+
+        // Pointer to the persistent sensor state in the SourceStateManager deque
+        const SourceRecord* sourceRecord = nullptr;
+
         // Uniquely identifies the radar station
         SourceIdentifier sourceIdentifier;
 
@@ -45,6 +52,12 @@ class AsterixMessage {
         // Reusable setter used by Ixxx/010 Handlers across all categories
         void setSourceIdentifier(uint8_t sac, uint8_t sic) {
             sourceIdentifier = {sac, sic};
+
+            // If the handler provided a manager, we "hook" into the persistent state
+            if (manager) {
+                // This retrieves the stable pointer from the deque
+                sourceRecord = manager->getOrCreateRecord(sourceIdentifier);
+            }
         }
 };
 

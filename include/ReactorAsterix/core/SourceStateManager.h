@@ -18,8 +18,8 @@
 #pragma once
 
 // System headers
-#include <map>
-#include <cstdint>
+#include <deque>
+#include <mutex>
 #include <optional>
 #include <shared_mutex>
 
@@ -27,6 +27,26 @@
 #include <ReactorAsterix/core/SourceIdentifier.h>
 
 namespace ReactorAsterix {
+
+struct alignas(64) SourceRecord {
+    // Identification (2 bytes)
+    SourceIdentifier id;
+
+    // 2. Temporal State (4 bytes)
+    mutable uint32_t lastTod{0};
+
+    // Temporal offset stats (integrated for cache locality)
+    int32_t  averageOffset = 0;
+    uint32_t offsetCount = 0;
+
+    SourceRecord(SourceIdentifier identifier) : id(identifier) {}
+
+    // Automatically calculate remaining space
+    // Padding ensures that two threads updating different sensors
+    // don't conflict on the same CPU cache line (False Sharing).
+    char padding[64 - (sizeof(SourceIdentifier) + sizeof(uint32_t) +
+            sizeof(int32_t) + sizeof(uint32_t))];
+};
 
 /**
  * @class SourceStateManager
@@ -37,23 +57,30 @@ class SourceStateManager {
         SourceStateManager() = default;
 
         /**
-         * @brief Returns the last known 32-bit TOD for a source.
+         * @brief High-performance lookup.
+         * Uses linear scan which is faster than map lookup for < 100-200 entries.
          */
-        [[nodiscard]] std::optional<uint32_t> getReferenceTime(const SourceIdentifier& si) const {
-            std::shared_lock lock(mutex_); // Thread-safe read
-            if (const auto it = sources.find(si); it != sources.end()) {
-                return it->second;
+        SourceRecord* getOrCreateRecord(SourceIdentifier id) {
+            // Try to find with a Shared Lock (Multiple threads can read)
+            {
+                std::shared_lock lock(mutex_);
+                for (auto& record : sources_) {
+                    if (record.id == id) return &record;
+                }
             }
-            return std::nullopt;
-        }
 
-        /**
-         * @brief Updates the stored 32-bit TOD for a specific source.
-         * Can be called by CAT 002, 048, 062, etc., whenever a full TOD is available.
-         */
-        void updateSourceTime(const SourceIdentifier& si, uint32_t fullTod) {
-            std::unique_lock lock(mutex_); // Thread-safe write
-            sources.insert_or_assign(si, fullTod);
+            // Not found? Upgrade to Unique Lock to add a new entry
+            std::unique_lock lock(mutex_);
+
+            // Double-check pattern: another thread might have added it
+            // while we were switching locks.
+            for (auto& record : sources_) {
+                if (record.id == id) return &record;
+            }
+
+            // Add new record with default stats and padding
+            sources_.emplace_back(id);
+            return &sources_.back();
         }
 
         /**
@@ -62,45 +89,28 @@ class SourceStateManager {
          * @param diff128th The difference (Radar TOD - Kernel Time) in 1/128s units.
          */
         void updateTimeOffset(const SourceIdentifier& si, int32_t diff128th) {
+            auto* record = getOrCreateRecord(si);
+
             std::unique_lock lock(mutex_);
-            auto& data = offsetData[si];
 
             // Use a window size (e.g., 128) to remain responsive to clock drift.
             // Once the window is full, the average behaves like an
             // Exponential Moving Average (EMA).
             constexpr uint64_t MAX_WINDOW = 128;
 
-            if (data.count < MAX_WINDOW) {
-                data.count++;
+            if (record->offsetCount < MAX_WINDOW) {
+                record->offsetCount++;
             }
 
             // Update average: NewAvg = OldAvg + (NewValue - OldAvg) / N
-            data.average += (static_cast<double>(diff128th) - data.average) / static_cast<double>(data.count);
-        }
-
-        /**
-         * @brief Gets the current average offset in 1/128s units.
-         * Returns 0 if no offset has been calculated yet.
-         */
-        [[nodiscard]] int32_t getAverageOffset(const SourceIdentifier& si) const {
-            std::shared_lock lock(mutex_);
-            if (auto it = offsetData.find(si); it != offsetData.end()) {
-                return static_cast<int32_t>(it->second.average);
-            }
-            return 0;
+            record->averageOffset += (diff128th - record->averageOffset) /
+                static_cast<int32_t>(record->offsetCount);
         }
 
     private:
-        struct OffsetStats {
-            double average = 0.0;
-            uint64_t count = 0;
-        };
-
+        // Contiguous storage for cache-friendly lookups
+        std::deque<SourceRecord> sources_;
         mutable std::shared_mutex mutex_; // Protects all internal maps
-
-        std::map<SourceIdentifier, uint32_t> sources;
-
-        std::map<SourceIdentifier, OffsetStats> offsetData;
 };
 
 } // namespace ReactorAsterix

@@ -168,14 +168,19 @@ size_t Asterix1Handler::processDataRecord(
     // Create the context object (Asterix1Report).
     Asterix1Report report;
 
+    // Set the manager pointer so the report can resolve itself later
+    // This is the "secret sauce" that allows the decoders to stay unchanged.
+    report.manager = this->sourceStateManager.get();
+
     // Decode everything first.
     // This populates SAC/SIC and the raw 16-bit LSP Clock (if present).
     size_t consumed = this->_processDataRecordInternal(fspec, payload, report);
 
-    if (consumed > 0 && sourceStateManager) {
+    if (consumed > 0) {
         // Get the best available 24-bit reference time
-        uint32_t ref = sourceStateManager->getReferenceTime(
-                report.sourceIdentifier).value_or(calculateCurrentTod(ts));
+        uint32_t ref = (report.sourceRecord && report.sourceRecord->lastTod > 0)
+                       ? report.sourceRecord->lastTod
+                       : calculateCurrentTod(ts);
 
         report.TOD = report.has(Asterix1Report::Presence::HAS_LSP_CLOCK)
             ? expandTruncatedTime(report.todLSP, ref)
@@ -183,12 +188,28 @@ size_t Asterix1Handler::processDataRecord(
 
         // UPDATE MANAGER FIRST (Using raw Radar TOD)
         // ALWAYS update the Radar's 24h clock state (for bit-stitching ref)
-        sourceStateManager->updateSourceTime(report.sourceIdentifier, report.TOD);
+        if (report.sourceRecord) {
+            // Update persistent raw time
+            report.sourceRecord->lastTod = report.TOD;
 
-        // APPLY OFFSET FOR LISTENERS (Transition to System Domain)
-        // Now we shift the report's TOD to match our local Linux clock
-        int32_t avgOffset = sourceStateManager->getAverageOffset(report.sourceIdentifier);
-        report.TOD = static_cast<uint32_t>(static_cast<int32_t>(report.TOD) - avgOffset);
+            // APPLY OFFSET FOR LISTENERS (Transition to System Domain)
+            // Now we shift the report's TOD to match our local Linux clock
+            // Get the average offset directly from the record (No lookup needed!)
+            int32_t corrected = static_cast<int32_t>(report.TOD) -
+                report.sourceRecord->averageOffset;
+
+            // Handle the midnight wrap-around
+            constexpr int32_t TICKS_PER_DAY = 86400 * 128;
+
+            if (corrected < 0) {
+                corrected += TICKS_PER_DAY; // Handles "just after midnight"
+            } else if (corrected >= TICKS_PER_DAY) {
+                corrected -= TICKS_PER_DAY; // Handles "just before midnight"
+            }
+
+            // Apply the shift
+            report.TOD = static_cast<uint32_t>(corrected);
+        }
 
         // LOCK-FREE NOTIFICATION
         // Just take a reference to the current list.
