@@ -228,26 +228,6 @@ class AsterixCategoryHandler : public IAsterixCategoryHandler {
 
         [[nodiscard]]bool checkMandatoryItems(std::string_view fspec);
 
-        /**
-         * @brief Internal method that handles the F-spec parsing and data decoding.
-         *
-         * This method iterates through the F-spec bytes, identifies the presence of
-         * data items, and dispatches the decoding task to the corresponding handler.
-         * It returns the total number of bytes consumed from the data payload.
-         *
-         * @param fspec A pointer to the start of the Field Specification.
-         * @param fspecSize The size of the F-spec in bytes.
-         * @param data A pointer to the start of the data payload.
-         * @param dataLeft The remaining size of the data payload in bytes.
-         * @param context A reference to the context object (e.g., `Asterix1Report`, `AsterixNorth`)
-         * to which the decoded data will be written by the individual item handlers.
-         * @return size_t The total number of bytes consumed from the data payload.
-         */
-        [[nodiscard]]size_t _processDataRecordInternal(
-                std::string_view fspec,
-                std::string_view payload,
-                T& context);
-
         // This allows derived classes (Cat001, Cat002) to get the snapshot
         std::shared_ptr<ListenerList> getListeners() const {
             return std::atomic_load(&listeners_);
@@ -322,80 +302,6 @@ bool AsterixCategoryHandler<T, ListenerInterface>::checkMandatoryItems(std::stri
         }
     }
     return true;
-}
-
-template <typename T, typename ListenerInterface>
-size_t AsterixCategoryHandler<T, ListenerInterface>::_processDataRecordInternal(
-        std::string_view fspec,
-        std::string_view payload,
-        T& context) {
-
-    uint16_t frn_base = 1;
-
-    std::string_view remainingData = payload;
-
-    // Helper to log and exit
-    auto abortWithStat = [&](std::atomic<uint64_t>& counter) -> size_t {
-        if (stats_ptr) {
-            counter.fetch_add(1, std::memory_order_relaxed);
-        }
-        return 0;
-    };
-
-    // Validate Mandatory Fields
-    if (!checkMandatoryItems(fspec)) [[unlikely]] {
-        return abortWithStat(stats_ptr->protocolViolations);
-    }
-
-    // Loop through each byte of the F-spec.
-    for (const char c : fspec) {
-        const uint8_t fspecByte = static_cast<uint8_t>(c);
-
-        uint8_t itemBits = fspecByte & 0xFE; // Strip FX bit
-
-        // Quick exit if no items in this byte
-        while (itemBits) {
-            // Get the index (0-6) of the highest set bit
-            int offset = __builtin_clz(static_cast<uint32_t>(itemBits) << 24);
-            uint16_t currentFrn = static_cast<uint16_t>(frn_base + offset);
-
-            // Direct array access instead of vector lookup.
-            // If FRN is within bounds, the CPU likely has this in the L1/L2 cache.
-            // Get the handler first (nullptr if out of bounds or not registered)
-            IAsterixDataItemHandler<T>* handler = itemLookup[currentFrn - 1];
-
-            // BIT RAISED: We must decode this item
-            if (handler) [[likely]] {
-                // Determine item size and check buffer bounds.
-                auto itemSize = handler->getSize(remainingData);
-                if (itemSize == 0 || itemSize > remainingData.size()) {
-                    // Not enough data was found in the payload for this item.
-                    return abortWithStat(stats_ptr->malformedRecords);
-                }
-
-                // Decode the data into the context object and advance pointers.
-                handler->decode(context, remainingData.substr(0, itemSize));
-
-                remainingData.remove_prefix(itemSize);
-            } else {
-                // Update stats for missing decoder.
-                return abortWithStat(stats_ptr->unhandledItems);
-            }
-
-            // Clear the bit we just processed to find the next one
-            itemBits &= static_cast<uint8_t>(~(0x80 >> offset));
-        }
-
-        // If the FX bit (0x01) is NOT set, this is the last F-spec byte
-        if (!(fspecByte & 0x01)) {
-            return payload.size() - remainingData.size();
-        }
-
-        frn_base += 7;
-    }
-
-    // If we reach here, the loop finished but the last byte had FX=1
-    return abortWithStat(stats_ptr->malformedRecords);
 }
 
 template <typename T, typename ListenerInterface>
