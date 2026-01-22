@@ -87,12 +87,14 @@ class Asterix2Handler final : public AsterixCategoryHandler<Asterix2Report, IAst
         std::shared_ptr<SourceStateManager> sourceStateManager;
 
         // --- Data Item Handlers (Statically Named) ---
-        I002_010_Handler m_i010;
-        I002_000_Handler m_i000;
-        I002_020_Handler m_i020;
-        I002_030_Handler m_i030;
-        I002_041_Handler m_i041;
-        I002_050_Handler m_i050;
+        std::tuple<
+            I002_010_Handler,
+            I002_000_Handler,
+            I002_020_Handler,
+            I002_030_Handler,
+            I002_041_Handler,
+            I002_050_Handler
+        > m_handlers;
 };
 
 } // namespace ReactorAsterix

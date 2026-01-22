@@ -53,24 +53,8 @@ void Asterix2Handler::registerHandlers() {
 }
 
 bool Asterix2Handler::dispatch(int frn, Asterix2Report& report, std::string_view& data) {
-    switch (frn) {
-        case 1:  if (execute(m_i010, report, data)) return true; break;
-        case 2:  if (execute(m_i000, report, data)) return true; break;
-        case 3:  if (execute(m_i020, report, data)) return true; break;
-        case 4:  if (execute(m_i030, report, data)) return true; break;
-        case 5:  if (execute(m_i041, report, data)) return true; break;
-        case 6:  if (execute(m_i050, report, data)) return true; break;
-        default:
-            // Update stats for missing decoder.
-            if (stats_ptr) {
-                stats_ptr->unhandledItems.fetch_add(1, std::memory_order_relaxed);
-            }
-            return false;
-    }
-    if (stats_ptr) {
-        stats_ptr->malformedRecords.fetch_add(1, std::memory_order_relaxed);
-    }
-    return false;
+    // Calls the template version in the base class
+    return AsterixCategoryHandler::dispatch(frn, report, data, m_handlers);
 }
 
 size_t Asterix2Handler::_processDataRecordInternal(

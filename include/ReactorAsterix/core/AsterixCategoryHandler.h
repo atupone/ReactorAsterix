@@ -171,6 +171,35 @@ class AsterixCategoryHandler : public IAsterixCategoryHandler {
             (addHandler(std::make_unique<HandlerTypes>(), HandlerTypes::FRN), ...);
         }
 
+        template <typename ReportType, typename HandlersTuple>
+            bool dispatch(int frn, ReportType& report, std::string_view& data, HandlersTuple& handlers) {
+                bool frnMatched = false;
+
+                bool success = std::apply([&](auto&... h) {
+                        // Fold expression: ((condition ? execute(...) : false) || ...)
+                        // Expands at compile time to a sequence of checks.
+                        return ((h.FRN == frn
+                                    ? (frnMatched = true, execute(h, report, data))
+                                    : false) || ...);
+                        }, handlers);
+
+                if (!frnMatched) {
+                    // Update stats for missing decoder.
+                    if (stats_ptr) {
+                        stats_ptr->unhandledItems.fetch_add(1, std::memory_order_relaxed);
+                    }
+                    return false;
+                }
+
+                if (!success) {
+                    if (stats_ptr) {
+                        stats_ptr->malformedRecords.fetch_add(1, std::memory_order_relaxed);
+                    }
+                }
+
+                return success;
+            }
+
         /**
          * @brief Pointer to central diagnostic stats.
          */

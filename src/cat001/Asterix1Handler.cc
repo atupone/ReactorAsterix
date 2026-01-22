@@ -117,28 +117,8 @@ uint32_t Asterix1Handler::expandTruncatedTime(uint16_t todLSP, uint32_t refTOD) 
 }
 
 bool Asterix1Handler::dispatch(int frn, Asterix1Report& report, std::string_view& data) {
-    switch (frn) {
-        case 1:  if (execute(m_i010, report, data)) return true; break;
-        case 2:  if (execute(m_i020, report, data)) return true; break;
-        case 3:  if (execute(m_i040, report, data)) return true; break;
-        case 4:  if (execute(m_i070, report, data)) return true; break;
-        case 5:  if (execute(m_i090, report, data)) return true; break;
-        case 6:  if (execute(m_i130, report, data)) return true; break;
-        case 7:  if (execute(m_i141, report, data)) return true; break;
-        case 8:  if (execute(m_i050, report, data)) return true; break;
-        case 10: if (execute(m_i131, report, data)) return true; break;
-        case 15: if (execute(m_i150, report, data)) return true; break;
-        default:
-            // Update stats for missing decoder.
-            if (stats_ptr) {
-                stats_ptr->unhandledItems.fetch_add(1, std::memory_order_relaxed);
-            }
-            return false;
-    }
-    if (stats_ptr) {
-        stats_ptr->malformedRecords.fetch_add(1, std::memory_order_relaxed);
-    }
-    return false;
+    // Calls the template version in the base class
+    return AsterixCategoryHandler::dispatch(frn, report, data, m_handlers);
 }
 
 size_t Asterix1Handler::_processDataRecordInternal(
