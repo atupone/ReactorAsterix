@@ -20,6 +20,7 @@
 // System headers
 #include <atomic>
 #include <cstdint>
+#include <new>
 
 namespace ReactorAsterix {
 
@@ -28,7 +29,14 @@ namespace ReactorAsterix {
      * Unlike AsterixStats, this CAN be copied, printed, or serialized.
      */
     struct AsterixStatsData {
-        uint64_t totalPackets{0};
+        // Align the struct to the cache line size (usually 64 bytes)
+        // to ensure this whole block doesn't share a line with other nearby data.
+        alignas(std::hardware_destructive_interference_size)uint64_t totalPackets{0};
+
+        // If threads update these counters independently (e.g., one thread handles
+        // good packets, another handles errors), pad them.
+        // Otherwise, grouping them is fine if updated by the same thread.
+
         uint64_t trailingBytesCount{0};
         uint64_t unhandledCategories{0};
         uint64_t malformedBlocks{0};
