@@ -15,7 +15,7 @@
 # 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
 
 cmake_minimum_required(VERSION 3.14)
-project(ReactorAsterix VERSION 0.0.6 LANGUAGES CXX)
+project(ReactorAsterix VERSION 0.0.7 LANGUAGES CXX)
 
 # ---------------------------------------------------------------------------
 # SYSTEM PATHS & INSTALLATION LOGIC
