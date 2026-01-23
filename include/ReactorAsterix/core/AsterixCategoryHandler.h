@@ -33,6 +33,29 @@
 
 namespace ReactorAsterix {
 
+// -----------------------------------------------------------------------
+// Helper: Linear search using C++17 Fold Expression
+// This avoids recursive template instantiation limits and errors.
+// -----------------------------------------------------------------------
+template <typename Tuple, uint8_t TargetFRN, size_t... Is>
+    constexpr int findHandlerIndexImpl(std::index_sequence<Is...>) {
+        int found = -1;
+        // Unfold checks across all tuple elements
+        ( ( (std::tuple_element_t<Is, Tuple>::FRN == TargetFRN) ? (found = static_cast<int>(Is)) : 0 ), ... );
+        return found;
+    }
+
+// -----------------------------------------------------------------------
+// Replacement HandlerIndexFinder
+// Keeps your existing API (::value) but uses the robust implementation.
+// -----------------------------------------------------------------------
+template <typename Tuple, uint8_t TargetFRN>
+struct HandlerIndexFinder {
+    static constexpr int value = findHandlerIndexImpl<Tuple, TargetFRN>(
+        std::make_index_sequence<std::tuple_size_v<Tuple>>{}
+    );
+};
+
 /**
  * @brief Helper to handle the "Boilerplate" of getting size and decoding.
  * Making this a template ensures the compiler knows the EXACT type of 'H' and 'R'.
@@ -198,16 +221,21 @@ class AsterixCategoryHandler : public IAsterixCategoryHandler {
         template <size_t StartIdx, size_t... Is, typename HandlerTuple, typename Report>
         static void unroll_octet(uint8_t octet, std::index_sequence<Is...>,
                 HandlerTuple& handlers, Report& report, std::string_view& data) {
-            // Fold expression: for each bit 0-6, if set, call decode on the matching handler index
-            ([&] {
-             constexpr size_t CurrentIdx = StartIdx + Is;
 
-             // GUARD: Only compile this branch if the handler exists in the tuple
-             if constexpr (CurrentIdx < std::tuple_size_v<HandlerTuple>) {
-                if (octet & (0x80 >> Is)) {
-                    std::get<CurrentIdx>(handlers).decode(report, data);
+            ([&] {
+                // Calculate the actual FRN represented by this bit
+                constexpr uint8_t CurrentFRN = static_cast<uint8_t>(StartIdx + Is + 1);
+
+                // COMPILE-TIME LOOKUP: Find the correct handler index for this FRN
+                constexpr int TupleIdx = HandlerIndexFinder<HandlerTuple, CurrentFRN>::value;
+
+                // Only generate code if we actually have a handler for this FRN
+                if constexpr (TupleIdx != -1) {
+                    // Check if the bit is set in the FSPEC
+                    if (octet & (0x80 >> Is)) {
+                        std::get<TupleIdx>(handlers).decode(report, data);
+                    }
                 }
-             }
              }(), ...);
         }
 
@@ -313,54 +341,6 @@ class AsterixCategoryHandler : public IAsterixCategoryHandler {
         std::shared_ptr<ListenerList> getListeners() const {
             return std::atomic_load(&listeners_);
         }
-
-        // The generic iterator takes a callable 'visitor'
-        template <typename Visitor>
-            size_t iterateFspec(std::string_view fspec, std::string_view& payload, Visitor&& visitor) {
-                // Helper to log and exit
-                auto abortWithStat = [&](std::atomic<uint64_t>& counter) -> size_t {
-                    if (stats_ptr) {
-                        counter.fetch_add(1, std::memory_order_relaxed);
-                    }
-                    return 0;
-                };
-
-                uint16_t frn_base = 1;
-                std::string_view remainingData = payload;
-
-                for (const char c : fspec) {
-                    const uint8_t fspecByte = static_cast<uint8_t>(c);
-
-                    uint8_t itemBits = fspecByte & 0xFE; // Strip FX bit
-
-                    // Quick exit if no items in this byte
-                    while (itemBits) {
-                        // Get the index (0-6) of the highest set bit
-                        int offset = __builtin_clz(static_cast<uint32_t>(itemBits) << 24);
-                        uint16_t currentFrn = static_cast<uint16_t>(frn_base + offset);
-
-                        // Call the visitor (Lambda or Functor)
-                        // If visitor returns false, we stop? Or just continue?
-                        // Usually we continue unless parsing failed (visitor updates payload view)
-                        if (!visitor(currentFrn, payload)) {
-                            return 0; // Error signaled by visitor
-                        }
-
-                        // Clear the bit we just processed to find the next one
-                        itemBits &= static_cast<uint8_t>(~(0x80 >> offset));
-                    }
-
-                    // If the FX bit (0x01) is NOT set, this is the last F-spec byte
-                    if (!(fspecByte & 0x01)) {
-                        return payload.size() - remainingData.size();
-                    }
-
-                    frn_base += 7;
-                }
-
-                // If we reach here, the loop finished but the last byte had FX=1
-                return abortWithStat(stats_ptr->malformedRecords);
-            }
 
     private:
         std::shared_ptr<ListenerList> listeners_{std::make_shared<ListenerList>()};
