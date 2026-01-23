@@ -121,43 +121,6 @@ bool Asterix1Handler::dispatch(int frn, Asterix1Report& report, std::string_view
     return AsterixCategoryHandler::dispatch(frn, report, data, m_handlers);
 }
 
-size_t Asterix1Handler::_processDataRecordInternal(
-        std::string_view fspec,
-        std::string_view payload,
-        Asterix1Report& context) {
-
-    // Helper to log and exit
-    auto abortWithStat = [&](std::atomic<uint64_t>& counter) -> size_t {
-        if (stats_ptr) {
-            counter.fetch_add(1, std::memory_order_relaxed);
-        }
-        return 0;
-    };
-
-    // Validate Mandatory Fields
-    if (!checkMandatoryItems(fspec)) [[unlikely]] {
-        return abortWithStat(stats_ptr->protocolViolations);
-    }
-
-    // Check for bits in FSPEC that have no Data Item handler
-    if (!checkAllHandlersSupported(fspec)) [[unlikely]] {
-        return abortWithStat(stats_ptr->unhandledItems);
-    }
-
-    // Main decoding loop
-    // Capture the result to a variable
-    size_t consumed = iterateFspec(fspec, payload, [&](uint16_t frn, std::string_view& data) {
-        return this->dispatch(frn, context, data);
-    });
-
-    // Statistics handled here if iterateFspec failed
-    if (consumed == 0) [[unlikely]] {
-        return abortWithStat(stats_ptr->malformedRecords);
-    }
-
-    return consumed;
-}
-
 /**
  * @brief Handles the processing of a single ASTERIX Category 1 data record (Plot).
  *
@@ -186,7 +149,7 @@ size_t Asterix1Handler::processDataRecord(
 
     // Decode everything first.
     // This populates SAC/SIC and the raw 16-bit LSP Clock (if present).
-    size_t consumed = this->_processDataRecordInternal(fspec, payload, report);
+    size_t consumed = processDataRecordGeneric(fspec, payload, report, m_handlers);
 
     if (consumed > 0) {
         // Get the best available 24-bit reference time

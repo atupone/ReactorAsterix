@@ -66,11 +66,6 @@ class Asterix2Handler final : public AsterixCategoryHandler<Asterix2Report, IAst
         void registerHandlers() override;
 
     private:
-        size_t _processDataRecordInternal(
-                std::string_view fspec,
-                std::string_view payload,
-                Asterix2Report& report);
-
         /**
          * @brief This is the "Hot Path".
          * Because we call methods on named members, the compiler

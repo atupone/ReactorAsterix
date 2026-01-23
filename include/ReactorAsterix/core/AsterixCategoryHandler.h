@@ -194,6 +194,78 @@ class AsterixCategoryHandler : public IAsterixCategoryHandler {
             return true;
         }
 
+        // Helper to unroll a single octet (7 data bits + 1 FX bit)
+        template <size_t StartIdx, size_t... Is, typename HandlerTuple, typename Report>
+        static void unroll_octet(uint8_t octet, std::index_sequence<Is...>,
+                HandlerTuple& handlers, Report& report, std::string_view& data) {
+            // Fold expression: for each bit 0-6, if set, call decode on the matching handler index
+            ([&] {
+             constexpr size_t CurrentIdx = StartIdx + Is;
+
+             // GUARD: Only compile this branch if the handler exists in the tuple
+             if constexpr (CurrentIdx < std::tuple_size_v<HandlerTuple>) {
+                if (octet & (0x80 >> Is)) {
+                    std::get<CurrentIdx>(handlers).decode(report, data);
+                }
+             }
+             }(), ...);
+        }
+
+        // Main entry point for the unrolled decoding logic
+        template <size_t OctetIdx = 0, typename HandlerTuple, typename Report>
+            static void process_all_octets_unrolled(std::string_view fspec, std::string_view& data,
+                    HandlerTuple& handlers, Report& report) {
+                if (OctetIdx >= fspec.size()) return;
+
+                uint8_t octet = static_cast<uint8_t>(fspec[OctetIdx]);
+
+                // Unroll bits for the current octet index
+                unroll_octet<OctetIdx * 7>(octet, std::make_index_sequence<7>{}, handlers, report, data);
+
+                // If FX bit is set and the next octet has potential handlers, recurse
+                if constexpr ((OctetIdx + 1) * 7 < std::tuple_size_v<HandlerTuple>) {
+                    if (octet & 0x01) {
+                        process_all_octets_unrolled<OctetIdx + 1>(fspec, data, handlers, report);
+                    }
+                }
+            }
+
+        /**
+         * @brief The shared internal logic for all ASTERIX categories.
+         */
+        template <typename ReportType, typename HandlerTuple>
+            size_t processDataRecordGeneric(
+                    std::string_view fspec,
+                    std::string_view payload,
+                    ReportType& context,
+                    HandlerTuple& handlers)
+            {
+                // Validation logic
+                if (!checkMandatoryItems(fspec)) [[unlikely]] {
+                    if (stats_ptr) stats_ptr->protocolViolations.fetch_add(1, std::memory_order_relaxed);
+                    return 0;
+                }
+
+                if (!checkAllHandlersSupported(fspec)) [[unlikely]] {
+                    if (stats_ptr) stats_ptr->unhandledItems.fetch_add(1, std::memory_order_relaxed);
+                    return 0;
+                }
+
+                std::string_view data = payload;
+
+                // Execute the unrolled decoding
+                process_all_octets_unrolled(fspec, data, handlers, context);
+
+                size_t consumed = payload.size() - data.size();
+
+                if (consumed == 0 && payload.size() > 0) [[unlikely]] {
+                    if (stats_ptr) stats_ptr->malformedRecords.fetch_add(1, std::memory_order_relaxed);
+                    return 0;
+                }
+
+                return consumed;
+            }
+
         template <typename... HandlerTypes>
         void registerBatch() {
             // Fold expression expands to addHandler(...) for every type in HandlerTypes

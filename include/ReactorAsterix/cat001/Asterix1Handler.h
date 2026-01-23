@@ -77,11 +77,6 @@ class Asterix1Handler final : public AsterixCategoryHandler<Asterix1Report, IAst
          */
         static uint32_t calculateCurrentTod(struct timespec ts) noexcept;
 
-        size_t _processDataRecordInternal(
-                std::string_view fspec,
-                std::string_view payload,
-                Asterix1Report& report);
-
         /**
          * @brief This is the "Hot Path".
          * Because we call methods on named members, the compiler
