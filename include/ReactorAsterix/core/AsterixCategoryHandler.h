@@ -119,6 +119,9 @@ class AsterixCategoryHandler : public IAsterixCategoryHandler {
         std::array<uint8_t, 20> mandatoryFspec{};
         size_t mandatoryFspecSize = 0; // Tracks the highest byte index used
 
+        // ASTERIX FSPECs can be multiple bytes. A 20-byte array covers most categories.
+        std::array<uint8_t, 20> supportedFspec = {0};
+
         /**
          * @brief Registers the specific data item handlers for the ASTERIX category.
          *
@@ -140,12 +143,16 @@ class AsterixCategoryHandler : public IAsterixCategoryHandler {
                 h->setStats(*this->stats_ptr);
             }
 
-            if (h->isMandatory()) {
-                // Determine which byte and bit in the F-spec this FRN corresponds to
-                const size_t uFrn = static_cast<size_t>(frn);
-                size_t byteIdx = (uFrn - 1) / 7;
-                size_t bitIdx  = 7 - ((uFrn - 1) % 7); // Bits 7 to 1
+            // Determine which byte and bit in the F-spec this FRN corresponds to
+            const size_t uFrn = static_cast<size_t>(frn);
+            size_t byteIdx = (uFrn - 1) / 7;
+            size_t bitIdx  = 7 - ((uFrn - 1) % 7); // Bits 7 to 1
 
+            if (byteIdx < supportedFspec.size()) {
+                supportedFspec[byteIdx] |= static_cast<uint8_t>(1 << bitIdx);
+            }
+
+            if (h->isMandatory()) {
                 // Set the bit in the mandatory mask corresponding to this FRN
                 mandatoryFspec[byteIdx] |= static_cast<uint8_t>(1 << bitIdx);
                 mandatoryFspecSize = std::max(mandatoryFspecSize, byteIdx + 1);
@@ -165,6 +172,28 @@ class AsterixCategoryHandler : public IAsterixCategoryHandler {
             handlerOwnership.push_back(std::move(h)); // Owner
         }
 
+        /**
+         * @brief Checks if any bit is set in the received FSPEC for which
+         * we do NOT have a registered handler.
+         */
+        bool checkAllHandlersSupported(std::string_view fspec) const {
+            // Only check up to the size of the received FSPEC
+            for (size_t i = 0; i < fspec.size(); ++i) {
+                uint8_t received = static_cast<uint8_t>(fspec[i]);
+
+                // If the received FSPEC is longer than our mask, any bit set
+                // in the extra bytes is unsupported by definition.
+                uint8_t supported = (i < supportedFspec.size()) ? supportedFspec[i] : 0;
+
+                // (received & ~supported) identifies bits set that we don't support.
+                // We & with 0xFE to ignore the FX (extension) bit.
+                if ((received & ~supported) & 0xFE) {
+                    return false;
+                }
+            }
+            return true;
+        }
+
         template <typename... HandlerTypes>
         void registerBatch() {
             // Fold expression expands to addHandler(...) for every type in HandlerTypes
@@ -173,31 +202,11 @@ class AsterixCategoryHandler : public IAsterixCategoryHandler {
 
         template <typename ReportType, typename HandlersTuple>
             bool dispatch(int frn, ReportType& report, std::string_view& data, HandlersTuple& handlers) {
-                bool frnMatched = false;
-
-                bool success = std::apply([&](auto&... h) {
-                        // Fold expression: ((condition ? execute(...) : false) || ...)
-                        // Expands at compile time to a sequence of checks.
-                        return ((h.FRN == frn
-                                    ? (frnMatched = true, execute(h, report, data))
-                                    : false) || ...);
-                        }, handlers);
-
-                if (!frnMatched) {
-                    // Update stats for missing decoder.
-                    if (stats_ptr) {
-                        stats_ptr->unhandledItems.fetch_add(1, std::memory_order_relaxed);
-                    }
-                    return false;
-                }
-
-                if (!success) {
-                    if (stats_ptr) {
-                        stats_ptr->malformedRecords.fetch_add(1, std::memory_order_relaxed);
-                    }
-                }
-
-                return success;
+                return std::apply([&](auto&... h) {
+                    // Fold expression: ((condition ? execute(...) : false) || ...)
+                    // Expands at compile time to a sequence of checks.
+                    return ((h.FRN == frn ? execute(h, report, data) : false) || ...);
+                }, handlers);
             }
 
         /**

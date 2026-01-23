@@ -139,11 +139,23 @@ size_t Asterix1Handler::_processDataRecordInternal(
         return abortWithStat(stats_ptr->protocolViolations);
     }
 
-    // We pass a lambda that acts as the "Switch Dispatcher"
-    return iterateFspec(fspec, payload, [&](uint16_t frn, std::string_view& data) {
-        // This lambda replaces the virtual dispatch loop
+    // Check for bits in FSPEC that have no Data Item handler
+    if (!checkAllHandlersSupported(fspec)) [[unlikely]] {
+        return abortWithStat(stats_ptr->unhandledItems);
+    }
+
+    // Main decoding loop
+    // Capture the result to a variable
+    size_t consumed = iterateFspec(fspec, payload, [&](uint16_t frn, std::string_view& data) {
         return this->dispatch(frn, context, data);
     });
+
+    // Statistics handled here if iterateFspec failed
+    if (consumed == 0) [[unlikely]] {
+        return abortWithStat(stats_ptr->malformedRecords);
+    }
+
+    return consumed;
 }
 
 /**
