@@ -18,6 +18,7 @@
 #pragma once
 
 // System headers
+#include <atomic>
 #include <deque>
 #include <mutex>
 #include <optional>
@@ -33,19 +34,18 @@ struct alignas(64) SourceRecord {
     SourceIdentifier id;
 
     // 2. Temporal State (4 bytes)
-    mutable uint32_t lastTod{0};
+    mutable std::atomic<uint32_t> lastTod{0};
 
     // Temporal offset stats (integrated for cache locality)
-    int32_t  averageOffset = 0;
-    uint32_t offsetCount = 0;
+    std::atomic<int32_t>  averageOffset{0};
+    std::atomic<uint32_t> offsetCount{0};
 
     SourceRecord(SourceIdentifier identifier) : id(identifier) {}
 
     // Automatically calculate remaining space
     // Padding ensures that two threads updating different sensors
     // don't conflict on the same CPU cache line (False Sharing).
-    char padding[64 - (sizeof(SourceIdentifier) + sizeof(uint32_t) +
-            sizeof(int32_t) + sizeof(uint32_t))];
+    char padding[64 - (sizeof(SourceIdentifier) + sizeof(std::atomic<uint32_t>) * 3)];
 };
 
 /**
@@ -88,23 +88,32 @@ class SourceStateManager {
          * @param si The source identifier.
          * @param diff128th The difference (Radar TOD - Kernel Time) in 1/128s units.
          */
-        void updateTimeOffset(const SourceIdentifier& si, int32_t diff128th) {
+        inline void updateTimeOffset(const SourceIdentifier& si, int32_t diff128th) {
             auto* record = getOrCreateRecord(si);
 
-            std::unique_lock lock(mutex_);
+            // 2. Lock-Free Update
+            // We fetch the current count to use in the EMA calculation
+            auto count = record->offsetCount.load(std::memory_order_relaxed);
 
             // Use a window size (e.g., 128) to remain responsive to clock drift.
             // Once the window is full, the average behaves like an
             // Exponential Moving Average (EMA).
             constexpr uint64_t MAX_WINDOW = 128;
 
-            if (record->offsetCount < MAX_WINDOW) {
-                record->offsetCount++;
+            if (count < MAX_WINDOW) {
+                record->offsetCount.fetch_add(1, std::memory_order_relaxed);
+                count++;
             }
 
-            // Update average: NewAvg = OldAvg + (NewValue - OldAvg) / N
-            record->averageOffset += (diff128th - record->averageOffset) /
-                static_cast<int32_t>(record->offsetCount);
+            // Atomic Compare-And-Swap (CAS) loop for the moving average
+            int32_t currentAvg = record->averageOffset.load(std::memory_order_relaxed);
+            int32_t newAvg;
+            do {
+                newAvg = currentAvg + (diff128th - currentAvg) / static_cast<int32_t>(count);
+            } while (!record->averageOffset.compare_exchange_weak(
+                        currentAvg, newAvg,
+                        std::memory_order_release,
+                        std::memory_order_relaxed));
         }
 
     private:

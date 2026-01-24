@@ -162,10 +162,19 @@ size_t Asterix1Handler::processDataRecord(
     size_t consumed = processDataRecordGeneric(fspec, payload, report, m_handlers);
 
     if (consumed > 0) {
-        // Get the best available 24-bit reference time
-        uint32_t ref = (report.sourceRecord && report.sourceRecord->lastTod > 0)
-                       ? report.sourceRecord->lastTod
-                       : calculateCurrentTod(ts);
+        uint32_t ref;
+        uint32_t last = 0;
+
+        // Short-circuit: If sourceRecord exists AND has a valid lastTod, use it.
+        if (report.sourceRecord) [[likely]] {
+            last = report.sourceRecord->lastTod.load(std::memory_order_relaxed);
+        }
+
+        if (last > 0) [[likely]] {
+            ref = last;
+        } else {
+            ref = calculateCurrentTod(ts);
+        }
 
         report.TOD = report.has(Asterix1Report::Presence::HAS_LSP_CLOCK)
             ? expandTruncatedTime(report.todLSP, ref)
