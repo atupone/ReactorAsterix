@@ -20,9 +20,10 @@
 // System headers
 #include <atomic>
 #include <cstdint>
-#include <new>
 
 namespace ReactorAsterix {
+    // 64 bytes is the standard for almost all modern x86 and ARM CPUs
+    constexpr std::size_t CacheLineSize = 64;
 
     /**
      * @brief A Plain Old Data (POD) struct representing a snapshot of statistics.
@@ -31,7 +32,7 @@ namespace ReactorAsterix {
     struct AsterixStatsData {
         // Align the struct to the cache line size (usually 64 bytes)
         // to ensure this whole block doesn't share a line with other nearby data.
-        alignas(std::hardware_destructive_interference_size)uint64_t totalPackets{0};
+        alignas(CacheLineSize)uint64_t totalPackets{0};
 
         // If threads update these counters independently (e.g., one thread handles
         // good packets, another handles errors), pad them.

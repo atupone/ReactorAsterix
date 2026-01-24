@@ -40,7 +40,7 @@ namespace ReactorAsterix {
  * This class processes raw binary streams from AtuReactor, identifies
  * ASTERIX data blocks, and dispatches them to registered category handlers.
  */
-class alignas(std::hardware_destructive_interference_size) AsterixPacketHandler {
+class alignas(CacheLineSize) AsterixPacketHandler {
     public:
         AsterixPacketHandler() = default;
 
