@@ -217,46 +217,84 @@ class AsterixCategoryHandler : public IAsterixCategoryHandler {
             return true;
         }
 
-        // Helper to unroll a single octet (7 data bits + 1 FX bit)
-        template <size_t StartIdx, size_t... Is, typename HandlerTuple, typename Report>
-        static void unroll_octet(uint8_t octet, std::index_sequence<Is...>,
-                HandlerTuple& handlers, Report& report, std::string_view& data) {
+        template<size_t StartFRN, size_t... Is, typename HandlerTuple, typename Report>
+        static bool unroll_octet_impl(uint8_t octet, std::index_sequence<Is...>, HandlerTuple& handlers,
+                Report& report, std::string_view& data, AsterixStats& stats) {
+            bool success = true;
 
+            // Fold expression: iterates over the pack 0, 1, 2, 3, 4, 5, 6
             ([&] {
-                // Calculate the actual FRN represented by this bit
-                constexpr uint8_t CurrentFRN = static_cast<uint8_t>(StartIdx + Is + 1);
+                if (!success) return; // Already failed, skip this bit
 
-                // COMPILE-TIME LOOKUP: Find the correct handler index for this FRN
-                constexpr int TupleIdx = HandlerIndexFinder<HandlerTuple, CurrentFRN>::value;
+                constexpr size_t CurrentFRN = StartFRN + Is;
 
-                // Only generate code if we actually have a handler for this FRN
-                if constexpr (TupleIdx != -1) {
-                    // Check if the bit is set in the FSPEC
-                    if (octet & (0x80 >> Is)) {
-                        std::get<TupleIdx>(handlers).decode(report, data);
+                // Check if the bit for this FRN is set (Bit 7 down to Bit 1)
+                if (octet & (0x80 >> Is)) {
+                    // Find the index in your handlers tuple
+                    constexpr int TupleIdx = HandlerIndexFinder<HandlerTuple,
+                                                                static_cast<unsigned char>(CurrentFRN)>::value;
+
+                    if constexpr (TupleIdx != -1) {
+                        // Call your 'execute' helper!
+                        // This does the getSize check, decode, and remove_prefix.
+                        if (!execute(std::get<TupleIdx>(handlers), report, data)) {
+                            stats.malformedRecords.fetch_add(1, std::memory_order_relaxed);
+                            success = false; // Set failure flag
+                        }
                     }
                 }
              }(), ...);
+
+            return success;
+        }
+
+        template<size_t StartFRN, typename HandlerTuple, typename Report>
+        static bool unroll_octet(uint8_t octet, HandlerTuple& handlers,
+                Report& report, std::string_view& data, AsterixStats& stats) {
+            return unroll_octet_impl<StartFRN>(
+                    octet, std::make_index_sequence<7>{}, handlers, report, data, stats);
+        }
+
+        template <size_t Threshold, typename Tuple, size_t... Is>
+        static constexpr bool HasHandlersBeyondHelper(std::index_sequence<Is...>) {
+            return ((std::tuple_element_t<Is, Tuple>::FRN > Threshold) || ...);
+        }
+
+        template <size_t Threshold, typename Tuple>
+        static constexpr bool HasHandlersBeyond() {
+            return HasHandlersBeyondHelper<Threshold, Tuple>(
+                std::make_index_sequence<std::tuple_size_v<Tuple>>{}
+            );
         }
 
         // Main entry point for the unrolled decoding logic
         template <size_t OctetIdx = 0, typename HandlerTuple, typename Report>
-            static void process_all_octets_unrolled(std::string_view fspec, std::string_view& data,
-                    HandlerTuple& handlers, Report& report) {
-                if (OctetIdx >= fspec.size()) return;
+        static bool process_all_octets_unrolled(std::string_view fspec, std::string_view& data,
+                HandlerTuple& handlers, Report& report, AsterixStats& stats) {
+            // Runtime safety: Don't read past the actual F-Spec received
+            if (OctetIdx >= fspec.size()) return true;
 
-                uint8_t octet = static_cast<uint8_t>(fspec[OctetIdx]);
+            uint8_t octet = static_cast<uint8_t>(fspec[OctetIdx]);
 
-                // Unroll bits for the current octet index
-                unroll_octet<OctetIdx * 7>(octet, std::make_index_sequence<7>{}, handlers, report, data);
+            // Calculate which FRN this octet starts with
+            constexpr size_t StartFRN = (OctetIdx * 7) + 1;
 
-                // If FX bit is set and the next octet has potential handlers, recurse
-                if constexpr ((OctetIdx + 1) * 7 < std::tuple_size_v<HandlerTuple>) {
-                    if (octet & 0x01) {
-                        process_all_octets_unrolled<OctetIdx + 1>(fspec, data, handlers, report);
-                    }
+            // We ALWAYS unroll 7 bits because any of them could match a handler in the sparse tuple
+            if (!unroll_octet<StartFRN>(octet, handlers, report, data, stats)) {
+                return false;
+            }
+
+            // Recursion logic:
+            // We only stop recursing if we are sure NO handler in the tuple
+            // has an FRN higher than what we just processed.
+            if constexpr (HasHandlersBeyond<StartFRN + 6, HandlerTuple>()) {
+                if (octet & 0x01) {
+                    return process_all_octets_unrolled<OctetIdx + 1>(fspec, data, handlers, report, stats);
                 }
             }
+
+            return true;
+        }
 
         /**
          * @brief The shared internal logic for all ASTERIX categories.
@@ -265,7 +303,7 @@ class AsterixCategoryHandler : public IAsterixCategoryHandler {
             size_t processDataRecordGeneric(
                     std::string_view fspec,
                     std::string_view payload,
-                    ReportType& context,
+                    ReportType& report,
                     HandlerTuple& handlers)
             {
                 // Validation logic
@@ -282,7 +320,7 @@ class AsterixCategoryHandler : public IAsterixCategoryHandler {
                 std::string_view data = payload;
 
                 // Execute the unrolled decoding
-                process_all_octets_unrolled(fspec, data, handlers, context);
+                process_all_octets_unrolled(fspec, data, handlers, report, *stats_ptr);
 
                 size_t consumed = payload.size() - data.size();
 
