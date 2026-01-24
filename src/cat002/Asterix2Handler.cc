@@ -52,6 +52,16 @@ void Asterix2Handler::registerHandlers() {
     >();
 }
 
+void Asterix2Handler::setStats(AsterixStats& s) {
+    // 1. Call the base class to set the local stats_ptr
+    AsterixCategoryHandler::setStats(s);
+
+    // 2. Propagate the reference to every handler in your compile-time tuple
+    std::apply([&s](auto&&... handler) {
+        (handler.setStats(s), ...);
+    }, m_handlers);
+}
+
 bool Asterix2Handler::dispatch(int frn, Asterix2Report& report, std::string_view& data) {
     // Calls the template version in the base class
     return AsterixCategoryHandler::dispatch(frn, report, data, m_handlers);

@@ -53,6 +53,16 @@ void Asterix1Handler::registerHandlers() {
     >();
 }
 
+void Asterix1Handler::setStats(AsterixStats& s) {
+    // 1. Call the base class to set the local stats_ptr
+    AsterixCategoryHandler::setStats(s);
+
+    // 2. Propagate the reference to every handler in your compile-time tuple
+    std::apply([&s](auto&&... handler) {
+        (handler.setStats(s), ...);
+    }, m_handlers);
+}
+
 uint32_t Asterix1Handler::calculateCurrentTod(struct timespec ts) noexcept {
     // Use the KERNEL timestamp as the fallback/reference
     // Convert timespec (seconds + nanoseconds) to ASTERIX units (1/128 sec)

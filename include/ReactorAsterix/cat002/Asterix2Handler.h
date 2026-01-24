@@ -56,6 +56,7 @@ class Asterix2Handler final : public AsterixCategoryHandler<Asterix2Report, IAst
                 std::string_view payload,
                 struct timespec ts) override;
 
+        void setStats(AsterixStats& s) override;
     protected:
         /**
          * @brief Registers the specific data item handlers for Category 2.
