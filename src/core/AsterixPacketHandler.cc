@@ -199,46 +199,33 @@ size_t AsterixPacketHandler::dispatchRecord(
     // Calculate F-Spec size
     // The F-Spec is at least 1 byte.
     // If the FX bit (LSB) is set, it extends to the next byte.
-    size_t fspecSize = 0;
-    size_t lastDataIdx = 0;
-    uint8_t lastDataValue = 0;
+    size_t fspecSize;
+
+    // Determine the maximum searchable area for the F-Spec
+    const size_t maxSearch = std::min(recordView.size() - 1,
+                                      Constants::MAX_FSPEC_SIZE);
 
     // Calculate F-Spec size safely
-    while (true) {
-        // Ensure we don't read past the buffer
-        if (fspecSize >= recordView.size() || fspecSize >= Constants::MAX_FSPEC_SIZE) [[unlikely]] {
-            return 0;
-        }
-
+    for (fspecSize = 0; fspecSize < maxSearch; ++fspecSize) {
         const uint8_t currentByte = data[fspecSize];
 
-        // If there are bits other than the FX bit (bit 0), save it
-        if (currentByte > 1) {
-            lastDataIdx = fspecSize;
-            lastDataValue = currentByte;
-        }
-
-        fspecSize++;
-
-        // Check FX bit
-        if (!(currentByte & Constants::FX_BIT)) break;
-    }
-
-    // --- CONSOLIDATED BOUNDS CHECK ---
-    // Validate if the furthest data bit exceeds MAX_FRNS (128)
-    if (lastDataValue > 0) {
-        // 128 FRNs = 18 full bytes (126 bits) + 2 bits in the 19th byte
-        if (lastDataIdx > 18) [[unlikely]] {
-            return 0;
-        }
-        // If at index 18 (19th byte), only bits 7 and 6 (FRNs 127, 128) are allowed
-        if (lastDataIdx == 18 && (lastDataValue & 0x3E)) [[unlikely]] {
-            return 0;
+        // Check FX bit: if 0, we found the end
+        if (!(currentByte & Constants::FX_BIT)) {
+            break;
         }
     }
 
-    // Ensure we have at least 1 byte of payload (usually) or that the view is valid
-    if (fspecSize > recordView.size()) [[unlikely]] return 0;
+    // The Sanity Check
+    // If fspecSize == maxSearch, we reached the limit without finding FX=0.
+    // This means either the F-Spec is too long or it took up the whole record
+    // leaving 0 bytes for payload. Both are invalid.
+    if (fspecSize == maxSearch) [[unlikely]] {
+        return 0;
+    }
+
+    // Final Increment
+    // Convert the index where we broke into the actual size.
+    fspecSize++;
 
     auto fspec   = recordView.substr(0, fspecSize);
     auto payload = recordView.substr(fspecSize);
