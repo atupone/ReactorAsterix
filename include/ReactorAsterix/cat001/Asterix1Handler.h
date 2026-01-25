@@ -32,8 +32,25 @@ namespace ReactorAsterix {
  * @class Asterix1Handler
  * @brief Handles ASTERIX Category 1: Monoradar Target Reports.
  */
-class Asterix1Handler final : public AsterixCategoryHandler<Asterix1Report, IAsterix1Listener> {
+class Asterix1Handler final
+    : public AsterixCategoryHandler<Asterix1Report, IAsterix1Listener, Asterix1Handler> {
     public:
+        using HandlerTypes = std::tuple<
+            I001_010_Handler,
+            I001_020_Handler,
+            I001_040_Handler,
+            I001_070_Handler,
+            I001_090_Handler,
+            I001_130_Handler,
+            I001_141_Handler
+        >;
+
+        // Define the F-Spec bitmasks as static constexpr
+        // These are computed once at compile time based on the handler types
+        static constexpr auto supportedFspec_ = FspecBuilder<HandlerTypes>::buildSupported();
+
+        static constexpr auto mandatoryFspec_ = FspecBuilder<HandlerTypes>::buildMandatory();
+
         /**
          * @brief Constructor that initializes the data item handlers.
          */
@@ -85,21 +102,16 @@ class Asterix1Handler final : public AsterixCategoryHandler<Asterix1Report, IAst
          */
         bool dispatch(int frn, Asterix1Report& report, std::string_view& data);
 
+        // Supports multiple sinks (Logger, Tracker, Display)
+        std::vector<std::weak_ptr<IAsterix1Listener>> listeners;
+
+        // C++17 Reader-Writer Lock
+        mutable std::shared_mutex listenerMutex;
+
         std::shared_ptr<SourceStateManager> sourceStateManager;
 
         // --- Data Item Handlers (Statically Named) ---
-        std::tuple<
-            I001_010_Handler,
-            I001_020_Handler,
-            I001_040_Handler,
-            I001_070_Handler,
-            I001_090_Handler,
-            I001_130_Handler,
-            I001_141_Handler,
-            I001_050_Handler,
-            I001_131_Handler,
-            I001_150_Handler
-        > m_handlers;
+        HandlerTypes m_handlers;
 };
 
 } // namespace ReactorAsterix

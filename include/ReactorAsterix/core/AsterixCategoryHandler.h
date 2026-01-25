@@ -76,12 +76,64 @@ template<typename H, typename R>
         return true;
     }
 
+// Define a trait to check mandatory status at compile time
+template<typename T>
+struct is_mandatory { static constexpr bool value = false; };
+
+template <typename Tuple>
+struct FspecBuilder;
+
+// Compute F-Specs at Compile Time
+template<typename... Handlers>
+constexpr std::array<uint8_t, 20> buildSupportedFspec() {
+    std::array<uint8_t, 20> fspec{};
+    // Fold expression to set bits for each handler
+    ((fspec[(Handlers::FRN - 1) / 7] |= (1 << (7 - ((Handlers::FRN - 1) % 7)))), ...);
+    return fspec;
+}
+
+template <typename... Handlers>
+struct FspecBuilder<std::tuple<Handlers...>> {
+    // Builds mask for ALL supported handlers
+    static constexpr auto buildSupported() {
+        // This calls your existing buildSupportedFspec using the unpacked types
+        return buildSupportedFspec<Handlers...>();
+    }
+
+    // Builds mask ONLY for handlers where 'mandatory' is true
+    static constexpr auto buildMandatory() {
+        std::array<uint8_t, 20> mask = {0};
+
+        // Use a fold expression to check each handler's static 'mandatory' property
+        // Note: You need to add 'static constexpr bool mandatory' to your handler classes
+        ((Handlers::mandatory ? applyBit(mask, Handlers::FRN) : void()), ...);
+
+        return mask;
+    }
+
+    private:
+        static constexpr void applyBit(std::array<uint8_t, 20>& mask, uint8_t frn) {
+            size_t byteIndex = static_cast<size_t>((frn - 1) / 7);
+            int bitIndex  = 7 - ((frn - 1) % 7);
+            mask[byteIndex] |= static_cast<uint8_t>(1 << bitIndex);
+        }
+};
+
+template<typename... Handlers>
+constexpr std::array<uint8_t, 20> buildMandatoryFspec() {
+    std::array<uint8_t, 20> fspec{};
+    // Only set bit if Handler::is_mandatory is true
+    ((Handlers::is_mandatory ?
+      (fspec[(Handlers::FRN - 1) / 7] |= (1 << (7 - ((Handlers::FRN - 1) % 7)))) : 0), ...);
+    return fspec;
+}
+
 /**
  * @class AsterixCategoryHandler
  * @brief Base template for specific category handlers (e.g., Cat 001).
  * @tparam T The Record type (context) this handler populates.
  */
-template <typename T, typename ListenerInterface>
+template <typename T, typename ListenerInterface, typename Derived>
 class AsterixCategoryHandler : public IAsterixCategoryHandler {
     public:
         /**
@@ -138,13 +190,6 @@ class AsterixCategoryHandler : public IAsterixCategoryHandler {
         }
 
     protected:
-        // Pre-computed F-spec where bits are 1 if the item is mandatory
-        std::array<uint8_t, 20> mandatoryFspec{};
-        size_t mandatoryFspecSize = 0; // Tracks the highest byte index used
-
-        // ASTERIX FSPECs can be multiple bytes. A 20-byte array covers most categories.
-        std::array<uint8_t, 20> supportedFspec = {0};
-
         /**
          * @brief Registers the specific data item handlers for the ASTERIX category.
          *
@@ -166,21 +211,6 @@ class AsterixCategoryHandler : public IAsterixCategoryHandler {
                 h->setStats(*this->stats_ptr);
             }
 
-            // Determine which byte and bit in the F-spec this FRN corresponds to
-            const size_t uFrn = static_cast<size_t>(frn);
-            size_t byteIdx = (uFrn - 1) / 7;
-            size_t bitIdx  = 7 - ((uFrn - 1) % 7); // Bits 7 to 1
-
-            if (byteIdx < supportedFspec.size()) {
-                supportedFspec[byteIdx] |= static_cast<uint8_t>(1 << bitIdx);
-            }
-
-            if (h->isMandatory()) {
-                // Set the bit in the mandatory mask corresponding to this FRN
-                mandatoryFspec[byteIdx] |= static_cast<uint8_t>(1 << bitIdx);
-                mandatoryFspecSize = std::max(mandatoryFspecSize, byteIdx + 1);
-            }
-
             // RESET LOGIC: Check if an FRN is already occupied
             // Index is frn - 1 because FRNs start at 1
             if (auto* old = itemLookup[frn - 1]; old != nullptr) {
@@ -200,17 +230,19 @@ class AsterixCategoryHandler : public IAsterixCategoryHandler {
          * we do NOT have a registered handler.
          */
         bool checkAllHandlersSupported(std::string_view fspec) const {
-            // Only check up to the size of the received FSPEC
+            // Access the static constant from the specific subclass (e.g., Asterix1Handler)
+            const auto& supported = Derived::supportedFspec_;
+
             for (size_t i = 0; i < fspec.size(); ++i) {
                 uint8_t received = static_cast<uint8_t>(fspec[i]);
 
                 // If the received FSPEC is longer than our mask, any bit set
                 // in the extra bytes is unsupported by definition.
-                uint8_t supported = (i < supportedFspec.size()) ? supportedFspec[i] : 0;
+                uint8_t mask = (i < supported.size()) ? supported[i] : 0;
 
-                // (received & ~supported) identifies bits set that we don't support.
+                // (received & ~mask) identifies bits set that we don't support.
                 // We & with 0xFE to ignore the FX (extension) bit.
-                if ((received & ~supported) & 0xFE) {
+                if ((received & ~mask) & 0xFE) {
                     return false;
                 }
             }
@@ -373,7 +405,27 @@ class AsterixCategoryHandler : public IAsterixCategoryHandler {
          */
         std::vector<std::unique_ptr<IAsterixDataItemHandler<T>>> handlerOwnership;
 
-        [[nodiscard]]bool checkMandatoryItems(std::string_view fspec);
+        [[nodiscard]]bool checkMandatoryItems(std::string_view fspec) const {
+            // Access the constant from the specific subclass (e.g., Asterix1Handler)
+            const auto& mandatory = Derived::mandatoryFspec_;
+
+            const size_t bytesToCheck = std::min(fspec.size(), mandatory.size());
+            for (size_t i = 0; i < bytesToCheck; ++i) {
+                if ((static_cast<uint8_t>(fspec[i]) & mandatory[i]) != mandatory[i]) {
+                    return false;
+                }
+            }
+
+            if (fspec.size() < mandatory.size()) {
+                for (size_t i = fspec.size(); i < mandatory.size(); ++i) {
+                    if (mandatory[i] != 0) {
+                        return false; // A mandatory bit exists beyond the provided FSPEC
+                    }
+                }
+            }
+
+            return true;
+        };
 
         // This allows derived classes (Cat001, Cat002) to get the snapshot
         std::shared_ptr<ListenerList> getListeners() const {
@@ -385,26 +437,8 @@ class AsterixCategoryHandler : public IAsterixCategoryHandler {
         std::mutex writeMutex_; // Only for writers (addListener)
 };
 
-template <typename T, typename ListenerInterface>
-bool AsterixCategoryHandler<T, ListenerInterface>::checkMandatoryItems(std::string_view fspec) {
-
-    // 1. Validate Mandatory Fields
-    if (fspec.size() < mandatoryFspecSize) [[unlikely]] {
-        return false;
-    }
-
-    // 2nd Check: Detailed bit-level comparison
-    for (size_t i = 0; i < mandatoryFspecSize; ++i) {
-        // (required & ~received) identifies mandatory bits NOT present in received F-spec.
-        if (mandatoryFspec[i] & ~static_cast<uint8_t>(fspec[i])) [[unlikely]] {
-            return false;
-        }
-    }
-    return true;
-}
-
-template <typename T, typename ListenerInterface>
-void AsterixCategoryHandler<T, ListenerInterface>::setStats(AsterixStats& s) {
+template <typename T, typename ListenerInterface, typename Derived>
+void AsterixCategoryHandler<T, ListenerInterface, Derived>::setStats(AsterixStats& s) {
     this->stats_ptr = &s; // Store local pointer
     for (auto& handler : itemLookup) {
         if (handler) {

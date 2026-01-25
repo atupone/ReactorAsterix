@@ -39,7 +39,7 @@ namespace ReactorAsterix {
 template <typename T>
 class AsterixDataItemHandlerBase : public IAsterixDataItemHandler<T> {
     public:
-        AsterixDataItemHandlerBase() : mandatory(false), name("Unknown Item") {};
+        AsterixDataItemHandlerBase() : name("Unknown Item") {};
         virtual ~AsterixDataItemHandlerBase() = default;
 
         /**
@@ -69,9 +69,9 @@ class AsterixDataItemHandlerBase : public IAsterixDataItemHandler<T> {
             return *stats_ptr;
         }
 
-    protected:
-        bool mandatory;
+        static constexpr bool mandatory = false; // Default: items are optional
 
+    protected:
         std::string_view name;
 
         AsterixStats* stats_ptr = nullptr; // Store the pointer for use in subclasses

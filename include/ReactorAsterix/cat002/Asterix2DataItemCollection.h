@@ -48,9 +48,9 @@ class Asterix2Report;
 class I002_010_Handler final : public AsterixDataItemHandlerFixedLength<Asterix2Report> {
     public:
         static constexpr uint8_t FRN = 1;
+        static constexpr bool mandatory = true;
         I002_010_Handler() : AsterixDataItemHandlerFixedLength<Asterix2Report>(2) {
             name = "I002/010 Data Source Identifier";
-            mandatory = true;
         }
 
         /**
@@ -69,8 +69,8 @@ class I002_010_Handler final : public AsterixDataItemHandlerFixedLength<Asterix2
 class I002_000_Handler final: public AsterixDataItemHandlerFixedLength<Asterix2Report> {
     public:
         static constexpr uint8_t FRN = 2;
+        static constexpr bool mandatory = true;
         I002_000_Handler() : AsterixDataItemHandlerFixedLength(1) {
-            mandatory = true;
             name      = "I002/000, Message Type";
         }
 
@@ -87,7 +87,6 @@ class I002_020_Handler final : public AsterixDataItemHandlerFixedLength<Asterix2
     public:
         static constexpr uint8_t FRN = 3;
         I002_020_Handler() : AsterixDataItemHandlerFixedLength(1) {
-            mandatory = false;
             name      = "I002/020, Sector Number";
         }
 };
@@ -101,8 +100,8 @@ class I002_020_Handler final : public AsterixDataItemHandlerFixedLength<Asterix2
 class I002_030_Handler : public AsterixDataItemHandlerFixedLength<Asterix2Report> {
     public:
         static constexpr uint8_t FRN = 4;
+        static constexpr bool mandatory = true;
         I002_030_Handler(): AsterixDataItemHandlerFixedLength(3) {
-            mandatory = true;
             name      = "I002/030, Time of Day";
         }
         void decode(Asterix2Report& context,  std::string_view data) const override;
@@ -118,7 +117,6 @@ class I002_041_Handler final : public AsterixDataItemHandlerFixedLength<Asterix2
     public:
         static constexpr uint8_t FRN = 5;
         I002_041_Handler() : AsterixDataItemHandlerFixedLength(2) {
-            mandatory = false;
             name      = "I002/041, Antenna Rotation Speed";
         }
         void decode(Asterix2Report& context, std::string_view data) const override;
@@ -134,7 +132,6 @@ class I002_050_Handler final : public AsterixDataItemHandlerExtendedLength<Aster
     public:
         static constexpr uint8_t FRN = 6;
         I002_050_Handler(): AsterixDataItemHandlerExtendedLength(1, 1) {
-            mandatory = false;
             name      = "I002/050, Station Configuration Status";
         }
 };

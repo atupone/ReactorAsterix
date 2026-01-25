@@ -46,9 +46,9 @@ class Asterix1Report;
 class I001_010_Handler final : public AsterixDataItemHandlerFixedLength<Asterix1Report> {
     public:
         static constexpr uint8_t FRN = 1;
+        static constexpr bool mandatory = true;
         I001_010_Handler() : AsterixDataItemHandlerFixedLength<Asterix1Report>(2) {
             name = "I001/010 Data Source Identifier";
-            mandatory = true;
         }
 
         /**
@@ -66,9 +66,9 @@ class I001_010_Handler final : public AsterixDataItemHandlerFixedLength<Asterix1
 class I001_020_Handler final : public AsterixDataItemHandlerExtendedLength<Asterix1Report> {
     public:
         static constexpr uint8_t FRN = 2;
+        static constexpr bool mandatory = true;
         I001_020_Handler() : AsterixDataItemHandlerExtendedLength<Asterix1Report>(1, 1) {
             name = "I001/020 Target Report Descriptor";
-            mandatory = true;
         }
 
         /**

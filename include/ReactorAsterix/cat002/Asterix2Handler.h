@@ -32,8 +32,24 @@ namespace ReactorAsterix {
  * @class Asterix2Handler
  * @brief Handles ASTERIX Category 2: Monoradar Service Messages.
  */
-class Asterix2Handler final : public AsterixCategoryHandler<Asterix2Report, IAsterix2Listener> {
+class Asterix2Handler final
+    : public AsterixCategoryHandler<Asterix2Report, IAsterix2Listener, Asterix2Handler> {
     public:
+        using HandlerTypes = std::tuple<
+            I002_010_Handler,
+            I002_000_Handler,
+            I002_020_Handler,
+            I002_030_Handler,
+            I002_041_Handler,
+            I002_050_Handler
+        >;
+
+        // Define the F-Spec bitmasks as static constexpr
+        // These are computed once at compile time based on the handler types
+        static constexpr auto supportedFspec_ = FspecBuilder<HandlerTypes>::buildSupported();
+
+        static constexpr auto mandatoryFspec_ = FspecBuilder<HandlerTypes>::buildMandatory();
+
         /**
          * @brief Constructor that initializes the data item handlers.
          */
@@ -83,14 +99,7 @@ class Asterix2Handler final : public AsterixCategoryHandler<Asterix2Report, IAst
         std::shared_ptr<SourceStateManager> sourceStateManager;
 
         // --- Data Item Handlers (Statically Named) ---
-        std::tuple<
-            I002_010_Handler,
-            I002_000_Handler,
-            I002_020_Handler,
-            I002_030_Handler,
-            I002_041_Handler,
-            I002_050_Handler
-        > m_handlers;
+        HandlerTypes m_handlers;
 };
 
 } // namespace ReactorAsterix
