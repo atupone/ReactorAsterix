@@ -40,7 +40,10 @@ struct alignas(64) SourceRecord {
     std::atomic<int32_t>  averageOffset{0};
     std::atomic<uint32_t> offsetCount{0};
 
-    SourceRecord(SourceIdentifier identifier) : id(identifier) {}
+    // Flag to indicate we have performed at least one valid time sync
+    std::atomic<bool> isSynchronized{false};
+
+    explicit SourceRecord(SourceIdentifier identifier) : id(identifier) {}
 
     // Automatically calculate remaining space
     // Padding ensures that two threads updating different sensors
@@ -114,6 +117,12 @@ class SourceStateManager {
                         currentAvg, newAvg,
                         std::memory_order_release,
                         std::memory_order_relaxed));
+
+            // Once we have an offset, we consider this source "Synchronized"
+            // Use memory_order_release to ensure the averageOffset is visible to other threads
+            if (!record->isSynchronized.load(std::memory_order_relaxed)) [[unlikely]] {
+                record->isSynchronized.store(true, std::memory_order_release);
+            }
         }
 
     private:

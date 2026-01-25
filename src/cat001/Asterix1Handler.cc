@@ -161,60 +161,67 @@ size_t Asterix1Handler::processDataRecord(
     // This populates SAC/SIC and the raw 16-bit LSP Clock (if present).
     size_t consumed = processDataRecordGeneric(fspec, payload, report, m_handlers);
 
-    if (consumed > 0) {
-        uint32_t ref;
-        uint32_t last = 0;
+    if (consumed <= 0) [[unlikely]] {
+        return 0;
+    }
 
-        // Short-circuit: If sourceRecord exists AND has a valid lastTod, use it.
-        if (report.sourceRecord) [[likely]] {
-            last = report.sourceRecord->lastTod.load(std::memory_order_relaxed);
+    if (!report.sourceRecord) [[unlikely]] {
+        return consumed;
+    }
+
+    if (!report.sourceRecord->isSynchronized.load(std::memory_order_acquire)) [[unlikely]] {
+        return consumed;
+    }
+
+    // Short-circuit: If sourceRecord has a valid lastTod, use it.
+    uint32_t last = report.sourceRecord->lastTod.load(std::memory_order_relaxed);
+
+    uint32_t ref;
+
+    if (last > 0) [[likely]] {
+        ref = last;
+    } else {
+        ref = calculateCurrentTod(ts);
+    }
+
+    report.TOD = report.has(Asterix1Report::Presence::HAS_LSP_CLOCK)
+        ? expandTruncatedTime(report.todLSP, ref)
+        : ref;
+
+    // UPDATE MANAGER FIRST (Using raw Radar TOD)
+    // ALWAYS update the Radar's 24h clock state (for bit-stitching ref)
+    if (report.sourceRecord) {
+        // Update persistent raw time
+        report.sourceRecord->lastTod = report.TOD;
+
+        // APPLY OFFSET FOR LISTENERS (Transition to System Domain)
+        // Now we shift the report's TOD to match our local Linux clock
+        // Get the average offset directly from the record (No lookup needed!)
+        int32_t corrected = static_cast<int32_t>(report.TOD) -
+            report.sourceRecord->averageOffset;
+
+        // Handle the midnight wrap-around
+        constexpr int32_t TICKS_PER_DAY = 86400 * 128;
+
+        if (corrected < 0) {
+            corrected += TICKS_PER_DAY; // Handles "just after midnight"
+        } else if (corrected >= TICKS_PER_DAY) {
+            corrected -= TICKS_PER_DAY; // Handles "just before midnight"
         }
 
-        if (last > 0) [[likely]] {
-            ref = last;
-        } else {
-            ref = calculateCurrentTod(ts);
-        }
+        // Apply the shift
+        report.TOD = static_cast<uint32_t>(corrected);
+    }
 
-        report.TOD = report.has(Asterix1Report::Presence::HAS_LSP_CLOCK)
-            ? expandTruncatedTime(report.todLSP, ref)
-            : ref;
+    // LOCK-FREE NOTIFICATION
+    // Just take a reference to the current list.
+    // Even if a writer updates 'listeners' now, we safely iterate our local 'snapshot'.
+    auto currentListeners = this->getListeners();
 
-        // UPDATE MANAGER FIRST (Using raw Radar TOD)
-        // ALWAYS update the Radar's 24h clock state (for bit-stitching ref)
-        if (report.sourceRecord) {
-            // Update persistent raw time
-            report.sourceRecord->lastTod = report.TOD;
-
-            // APPLY OFFSET FOR LISTENERS (Transition to System Domain)
-            // Now we shift the report's TOD to match our local Linux clock
-            // Get the average offset directly from the record (No lookup needed!)
-            int32_t corrected = static_cast<int32_t>(report.TOD) -
-                report.sourceRecord->averageOffset;
-
-            // Handle the midnight wrap-around
-            constexpr int32_t TICKS_PER_DAY = 86400 * 128;
-
-            if (corrected < 0) {
-                corrected += TICKS_PER_DAY; // Handles "just after midnight"
-            } else if (corrected >= TICKS_PER_DAY) {
-                corrected -= TICKS_PER_DAY; // Handles "just before midnight"
-            }
-
-            // Apply the shift
-            report.TOD = static_cast<uint32_t>(corrected);
-        }
-
-        // LOCK-FREE NOTIFICATION
-        // Just take a reference to the current list.
-        // Even if a writer updates 'listeners' now, we safely iterate our local 'snapshot'.
-        auto currentListeners = this->getListeners();
-
-        // Notify all valid listeners
-        for (const auto& wp : *currentListeners) {
-            if (auto sp = wp.lock()) {
-                sp->onReportDecoded(report);
-            }
+    // Notify all valid listeners
+    for (const auto& wp : *currentListeners) {
+        if (auto sp = wp.lock()) {
+            sp->onReportDecoded(report);
         }
     }
 
