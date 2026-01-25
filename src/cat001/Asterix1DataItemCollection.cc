@@ -21,6 +21,7 @@
 // System headers
 #include <arpa/inet.h>
 #include <cstring>
+#include <iostream>
 
 // Library headers
 #include <ReactorAsterix/cat001/Asterix1Report.h>
@@ -243,7 +244,7 @@ void I001_090_Handler::decode(Asterix1Report& report, std::string_view data) con
  * @param data The raw data buffer for this item (2 bytes).
  */
 void I001_141_Handler::decode(Asterix1Report& report, std::string_view data) const {
-    report.todLSP = (static_cast<uint16_t>(data[0]) << 8) | data[1];
+    report.todLSP = (static_cast<uint16_t>(data[0]) << 8) | static_cast<uint8_t>(data[1]);
     report.presenceMask |= Asterix1Report::Presence::HAS_LSP_CLOCK;
 }
 
