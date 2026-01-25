@@ -43,7 +43,7 @@ using namespace ReactorAsterix;
 
 // 1. Create a listener for decoded reports
 class MyListener : public IAsterix1Listener {
-    void onReportDecoded(std::shared_ptr<Asterix1Report> report) override {
+    void onReportDecoded(const Asterix1Report& report) override {
         std::cout << "Decoded Position: " << report->range << "m" << std::endl;
     }
 };
@@ -54,14 +54,17 @@ int main() {
 
     // 2. Register Category 1 handler
     auto cat1 = std::make_unique<Asterix1Handler>(state);
-    MyListener listener;
-    cat1->addListener(&listener);
+
+    auto listener = std::make_shared<MyListener>();
+    cat1->addListener(listener);
     
     packetHandler.registerCategoryHandler(1, std::move(cat1));
 
     // 3. Process raw binary data
     uint8_t buffer[] = { 0x01, 0x00, 0x09, 0x80, 0x01, 0x02, 0x00, 0x00, 0x00 };
-    packetHandler.handlePacket(buffer, sizeof(buffer));
+
+    // handlePacket now requires a timestamp for TOD synchronization
+    packetHandler.handlePacket(buffer, sizeof(buffer), ts);
 
     return 0;
 }
@@ -74,13 +77,12 @@ To add a new ASTERIX category (e.g., Cat 048), follow these steps:
 1.  **Define a Report Class**: Create a class (e.g., `Asterix48Report`) to hold the decoded fields.
 2.  **Implement Data Item Handlers**: Create classes for each FRN (Field Record Number) inheriting from `AsterixDataItemHandlerFixedLength` or `AsterixDataItemHandlerExtendedLength`.
 3.  **Implement the Category Handler**:
-    * Inherit from `IAsterixCategoryHandler`.
-    * In `registerHandlers()`, map your FRN handlers using `addHandler(std::make_unique<I048_XXX_Handler>(), FRN)`.
+    * Inherit from `IAsterixCategoryHandler<Report, Listener, Handler>`.
+    * Define a `HandlerTypes` tuple containing all your data item handlers
+    * In `registerHandlers()`, use `registerBatch<HandlerTypes...>()` to automatically register all items based on their static `FRN` member.
 4.  **Register with PacketHandler**: Use `packetHandler.registerCategoryHandler(48, std::move(myCat48Handler))` in your main application.
 
 ## Technical Logic: F-Spec Validation
-
-
 
 The library ensures data integrity by validating that all required Data Items are present in the Field Specification (F-Spec). If a mandatory bit is missing—checked using the logic `mandatoryFspec[i] & ~static_cast<uint8_t>(fspec[i])`—the record is flagged as uninterpretable.
 
