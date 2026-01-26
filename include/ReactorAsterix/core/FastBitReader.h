@@ -34,6 +34,13 @@ class FastBitReader {
             [[nodiscard]] inline uint8_t readBits(int& bitOffset) const {
                 static_assert(N <= 8, "Use readByte for >8 bits");
 
+                // SAFETY CHECK: Ensure we don't shift negatively
+                // In a release build, this can be an assertion or assumption
+                if (bitOffset - N + 1 < 0) {
+                    // Handle error: spanning across byte boundary is not supported by this simple reader
+                    return 0;
+                }
+
                 // This math is calculated at COMPILE TIME, not runtime
                 constexpr uint8_t mask = (1 << N) - 1;
 
