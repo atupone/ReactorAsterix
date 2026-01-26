@@ -73,14 +73,6 @@ class Asterix2Handler final
                 struct timespec ts) override;
 
         void setStats(AsterixStats& s) override;
-    protected:
-        /**
-         * @brief Registers the specific data item handlers for Category 2.
-         *
-         * This method is called by the constructor to populate the handlers map
-         * with the correct decoding functions.
-         */
-        void registerHandlers() override;
 
     private:
         /**

@@ -29,33 +29,9 @@ using namespace Constants;
  * @brief Constructor for the ASTERIX Category 2 Handler.
  */
 Asterix2Handler::Asterix2Handler(std::shared_ptr<SourceStateManager> manager)
-    : sourceStateManager(manager) {
-    registerHandlers();
-}
-
-/**
- * @brief Registers the specific handlers for ASTERIX Category 2 data items.
- *
- * This method overrides the pure virtual method from the base class. It populates
- * the `handlers` vector with unique pointers to the concrete handler classes,
- * mapping each handler to its corresponding Field Record Number (FRN).
- */
-void Asterix2Handler::registerHandlers() {
-    // Register handlers at index = FRN - 1.
-    registerBatch<
-    I002_010_Handler, // I002/010: Data Source Identifier
-    I002_000_Handler, // I002/000: Message Type
-    I002_020_Handler, // I002/020: Sector Number
-    I002_030_Handler, // I002/030: Time of Day
-    I002_041_Handler, // I002/041: Antenna Rotation Speed
-    I002_050_Handler  // I002/050: Station Configuration Status
-    >();
-}
+    : sourceStateManager(manager) {}
 
 void Asterix2Handler::setStats(AsterixStats& s) {
-    // 1. Call the base class to set the local stats_ptr
-    AsterixCategoryHandler::setStats(s);
-
     // 2. Propagate the reference to every handler in your compile-time tuple
     std::apply([&s](auto&&... handler) {
         (handler.setStats(s), ...);

@@ -26,37 +26,9 @@ namespace ReactorAsterix {
  * Calls the virtual method to register all specific data item handlers.
  */
 Asterix1Handler::Asterix1Handler(std::shared_ptr<SourceStateManager> manager)
-    : sourceStateManager(manager) {
-    registerHandlers();
-}
-
-/**
- * @brief Registers the specific handlers for ASTERIX Category 1 data items.
- *
- * This method overrides the pure virtual method from the base class. It populates
- * the `handlers` vector with unique pointers to the concrete handler classes,
- * mapping each handler to its corresponding Field Record Number (FRN).
- */
-void Asterix1Handler::registerHandlers() {
-    // Register handlers at index = FRN - 1.
-    registerBatch<
-        I001_010_Handler, // I001/010: Data Source Identifier
-        I001_020_Handler, // I001/020: Target Report Descriptor
-        I001_040_Handler, // I001/040: Measured Position in Polar Co-ordinates
-        I001_070_Handler, // I001/070: Mode-3/A Code in Octal Representation
-        I001_090_Handler, // I001/090: Mode-C Code in Binary Representation
-        I001_130_Handler, // I001/130: Radar Plot Characteristics
-        I001_141_Handler, // I001/141: Truncated Time of Day
-        I001_050_Handler, // I001/050: Mode-2 Code in Octal Representation
-        I001_131_Handler, // I001/131: Received Power
-        I001_150_Handler  // I001/150: Presence of X-Pulse
-    >();
-}
+    : sourceStateManager(manager) {}
 
 void Asterix1Handler::setStats(AsterixStats& s) {
-    // 1. Call the base class to set the local stats_ptr
-    AsterixCategoryHandler::setStats(s);
-
     // 2. Propagate the reference to every handler in your compile-time tuple
     std::apply([&s](auto&&... handler) {
         (handler.setStats(s), ...);

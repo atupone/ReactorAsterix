@@ -142,11 +142,6 @@ class AsterixCategoryHandler : public IAsterixCategoryHandler {
          */
         virtual ~AsterixCategoryHandler() = default;
 
-        /**
-         * @brief Links the central statistics to this handler.
-         */
-        void setStats(AsterixStats& s) override;
-
         using ListenerList = std::vector<std::weak_ptr<ListenerInterface>>;
 
         void addListener(std::shared_ptr<ListenerInterface> l) {
@@ -190,41 +185,6 @@ class AsterixCategoryHandler : public IAsterixCategoryHandler {
         }
 
     protected:
-        /**
-         * @brief Registers the specific data item handlers for the ASTERIX category.
-         *
-         * This pure virtual method must be implemented by concrete derived classes
-         * (e.g., Asterix1Handler, Asterix2Handler) to populate the `handlers` vector
-         * with their specific data item handlers.
-         */
-        virtual void registerHandlers() = 0;
-
-        /**
-         * @brief Internal helper for derived classes to register a data item handler.
-         * Separates ownership (pool) from fast lookup (array).
-         */
-        void addHandler(std::unique_ptr<IAsterixDataItemHandler<T>> h, uint8_t frn) {
-            if (!h || frn == 0 || frn > MAX_FRNS) return;
-
-            // Link stats if available
-            if (this->stats_ptr) {
-                h->setStats(*this->stats_ptr);
-            }
-
-            // RESET LOGIC: Check if an FRN is already occupied
-            // Index is frn - 1 because FRNs start at 1
-            if (auto* old = itemLookup[frn - 1]; old != nullptr) {
-                // Remove the old owner from the pool
-                auto it = std::remove_if(handlerOwnership.begin(), handlerOwnership.end(),
-                    [old](const auto& ptr) {return ptr.get() == old; });
-                handlerOwnership.erase(it, handlerOwnership.end());
-            }
-
-            // Update the flattened lookup and the ownership pool
-            itemLookup[frn - 1] = h.get();      // Fast observer
-            handlerOwnership.push_back(std::move(h)); // Owner
-        }
-
         /**
          * @brief Checks if any bit is set in the received FSPEC for which
          * we do NOT have a registered handler.
@@ -364,12 +324,6 @@ class AsterixCategoryHandler : public IAsterixCategoryHandler {
                 return consumed;
             }
 
-        template <typename... HandlerTypes>
-        void registerBatch() {
-            // Fold expression expands to addHandler(...) for every type in HandlerTypes
-            (addHandler(std::make_unique<HandlerTypes>(), HandlerTypes::FRN), ...);
-        }
-
         template <typename ReportType, typename HandlersTuple>
             bool dispatch(int frn, ReportType& report, std::string_view& data, HandlersTuple& handlers) {
                 return std::apply([&](auto&... h) {
@@ -389,21 +343,6 @@ class AsterixCategoryHandler : public IAsterixCategoryHandler {
          * 128 covers all standard ASTERIX categories (max ~70-80 FRNs).
          */
         static constexpr size_t MAX_FRNS = 128;
-
-        /**
-         * @brief FLATTENED: O(1) Raw pointer lookup table.
-         *
-         * The index of the vector directly corresponds to the Field Record Number (FRN - 1),
-         * ensuring fast lookups and a memory-efficient structure.
-         */
-        std::array<IAsterixDataItemHandler<T>*, MAX_FRNS> itemLookup{};
-
-        /**
-         * @brief OWNERSHIP: Manages the lifetime of all data item handlers.
-         * Keeping these in a vector often results in them being allocated
-         * contiguously in heap memory.
-         */
-        std::vector<std::unique_ptr<IAsterixDataItemHandler<T>>> handlerOwnership;
 
         [[nodiscard]]bool checkMandatoryItems(std::string_view fspec) const {
             // Access the constant from the specific subclass (e.g., Asterix1Handler)
@@ -436,16 +375,6 @@ class AsterixCategoryHandler : public IAsterixCategoryHandler {
         std::shared_ptr<ListenerList> listeners_{std::make_shared<ListenerList>()};
         std::mutex writeMutex_; // Only for writers (addListener)
 };
-
-template <typename T, typename ListenerInterface, typename Derived>
-void AsterixCategoryHandler<T, ListenerInterface, Derived>::setStats(AsterixStats& s) {
-    this->stats_ptr = &s; // Store local pointer
-    for (auto& handler : itemLookup) {
-        if (handler) {
-            handler->setStats(s); // Pass reference to sub-handlers
-        }
-    }
-}
 
 } // namespace ReactorAsterix
 
