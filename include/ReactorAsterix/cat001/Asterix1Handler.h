@@ -34,6 +34,8 @@ namespace ReactorAsterix {
  */
 class Asterix1Handler final
     : public AsterixCategoryHandler<Asterix1Report, IAsterix1Listener, Asterix1Handler> {
+        // This line is essential for CRTP to work with private members:
+        friend class AsterixCategoryHandler<Asterix1Report, IAsterix1Listener, Asterix1Handler>;
     public:
         using HandlerTypes = std::tuple<
             I001_010_Handler,
@@ -56,24 +58,11 @@ class Asterix1Handler final
          */
         explicit Asterix1Handler(std::shared_ptr<SourceStateManager> manager);
 
-        /**
-         * @brief Main function for processing a single record.
-         *
-         * This function overrides the virtual method from `IAsterixCategoryHandler`.
-         * It encapsulates the entire flow of decoding and forwarding the plot.
-         *
-         * @param fspec A pointer to the record's F-spec.
-         * @param fspecSize The size of the F-spec.
-         * @param data A pointer to the start of the payload.
-         * @param dataLeft The remaining size of the payload.
-         * @return size_t The total number of bytes consumed from the payload.
-         */
-        size_t processDataRecord(
-                std::string_view fspec,
-                std::string_view payload,
-                struct timespec ts) override;
-
         void setStats(AsterixStats& s) override;
+
+    protected:
+        // Implementation of the Hook: Time Synchronization Logic
+        bool onAfterDecode(Asterix1Report& report, struct timespec ts);
 
     private:
         /**
@@ -99,8 +88,6 @@ class Asterix1Handler final
 
         // C++17 Reader-Writer Lock
         mutable std::shared_mutex listenerMutex;
-
-        std::shared_ptr<SourceStateManager> sourceStateManager;
 
         // --- Data Item Handlers (Statically Named) ---
         HandlerTypes m_handlers;

@@ -30,6 +30,7 @@
 // Libray headers
 #include <ReactorAsterix/core/IAsterixDataItemHandler.h>
 #include <ReactorAsterix/core/AsterixDiagnostics.h>
+#include <ReactorAsterix/core/AsterixMessage.h>
 
 namespace ReactorAsterix {
 
@@ -136,6 +137,8 @@ constexpr std::array<uint8_t, 20> buildMandatoryFspec() {
 template <typename T, typename ListenerInterface, typename Derived>
 class AsterixCategoryHandler : public IAsterixCategoryHandler {
     public:
+        explicit AsterixCategoryHandler(std::shared_ptr<SourceStateManager> manager)
+            : sourceStateManager(std::move(manager)) {}
         /**
          * @brief Virtual destructor to ensure proper cleanup of derived classes
          * and managed handlers.
@@ -182,6 +185,83 @@ class AsterixCategoryHandler : public IAsterixCategoryHandler {
                 }), next->end());
 
             std::atomic_store(&listeners_, next);
+        }
+
+        /**
+         * @brief The Hoisted Orchestrator.
+         * Shared by all categories (Cat 001, 002, etc.)
+         */
+        size_t processDataRecord(std::string_view fspec, std::string_view payload, struct timespec ts) override {
+            // Initialize Report (Type T is Asterix1Report, Asterix2Report, etc.)
+            T report;
+
+            // Common Logic Hoisted: Every report gets the manager reference
+            // This assumes 'T' (the report) has a 'manager' field
+            // Unified Assignment: Works for all Categories
+            report.manager = sourceStateManager.get();
+
+            // Validation logic
+            if (!checkMandatoryItems(fspec)) [[unlikely]] {
+                if (stats_ptr) stats_ptr->protocolViolations.fetch_add(1, std::memory_order_relaxed);
+                return 0;
+            }
+
+            if (!checkAllHandlersSupported(fspec)) [[unlikely]] {
+                if (stats_ptr) stats_ptr->unhandledItems.fetch_add(1, std::memory_order_relaxed);
+                return 0;
+            }
+
+            std::string_view data = payload;
+
+            // Execute the unrolled decoding
+            // Note: we pass the m_handlers from the Derived class
+            process_all_octets_unrolled(
+                fspec,
+                data,
+                static_cast<Derived*>(this)->m_handlers,
+                report,
+                *stats_ptr);
+
+            size_t consumed = payload.size() - data.size();
+
+            if (consumed == 0 && payload.size() > 0) [[unlikely]] {
+                if (stats_ptr) stats_ptr->malformedRecords.fetch_add(1, std::memory_order_relaxed);
+                return 0;
+            }
+
+            // Malformed or empty
+            if (consumed <= 0) [[unlikely]] {
+                return 0;
+            }
+
+            // Missing Source State
+            if (!report.sourceRecord) [[unlikely]] {
+                return consumed; // We decoded items, but can't sync time
+            }
+
+            // Hook: Post-decode logic (TOD synchronization, midnight wrap-around)
+            bool keep_report = static_cast<Derived*>(this)->onAfterDecode(report, ts);
+
+            if (keep_report) [[likely]] {
+                // Notify Listeners (Shared logic)
+                // LOCK-FREE NOTIFICATION
+                // Just take a reference to the current list.
+                // Even if a writer updates 'listeners' now, we safely iterate our local 'snapshot'.
+                auto currentListeners = this->getListeners();
+
+                for (auto const& weak_l : *currentListeners) {
+                    if (auto l = weak_l.lock()) {
+                        l->onReportDecoded(report);
+                    }
+                }
+            }
+
+            return consumed;
+        }
+
+        // Default hook (can be overridden by Derived if needed)
+        bool onAfterDecode(T& /*report*/, struct timespec /*ts*/) {
+            return true;
         }
 
     protected:
@@ -288,42 +368,6 @@ class AsterixCategoryHandler : public IAsterixCategoryHandler {
             return true;
         }
 
-        /**
-         * @brief The shared internal logic for all ASTERIX categories.
-         */
-        template <typename ReportType, typename HandlerTuple>
-            size_t processDataRecordGeneric(
-                    std::string_view fspec,
-                    std::string_view payload,
-                    ReportType& report,
-                    HandlerTuple& handlers)
-            {
-                // Validation logic
-                if (!checkMandatoryItems(fspec)) [[unlikely]] {
-                    if (stats_ptr) stats_ptr->protocolViolations.fetch_add(1, std::memory_order_relaxed);
-                    return 0;
-                }
-
-                if (!checkAllHandlersSupported(fspec)) [[unlikely]] {
-                    if (stats_ptr) stats_ptr->unhandledItems.fetch_add(1, std::memory_order_relaxed);
-                    return 0;
-                }
-
-                std::string_view data = payload;
-
-                // Execute the unrolled decoding
-                process_all_octets_unrolled(fspec, data, handlers, report, *stats_ptr);
-
-                size_t consumed = payload.size() - data.size();
-
-                if (consumed == 0 && payload.size() > 0) [[unlikely]] {
-                    if (stats_ptr) stats_ptr->malformedRecords.fetch_add(1, std::memory_order_relaxed);
-                    return 0;
-                }
-
-                return consumed;
-            }
-
         template <typename ReportType, typename HandlersTuple>
             bool dispatch(int frn, ReportType& report, std::string_view& data, HandlersTuple& handlers) {
                 return std::apply([&](auto&... h) {
@@ -337,6 +381,8 @@ class AsterixCategoryHandler : public IAsterixCategoryHandler {
          * @brief Pointer to central diagnostic stats.
          */
         AsterixStats* stats_ptr = nullptr;
+
+        std::shared_ptr<SourceStateManager> sourceStateManager;
 
         /**
          * @brief Maximum Field Record Number supported in the flat array.
