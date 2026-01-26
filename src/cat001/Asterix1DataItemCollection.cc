@@ -24,9 +24,10 @@
 #include <iostream>
 
 // Library headers
-#include <ReactorAsterix/cat001/Asterix1Report.h>
 #include <ReactorAsterix/core/AsterixDiagnostics.h>
+#include <ReactorAsterix/core/EndianUtils.h>
 #include <ReactorAsterix/core/FastBitReader.h>
+#include <ReactorAsterix/cat001/Asterix1Report.h>
 
 namespace ReactorAsterix {
 
@@ -131,16 +132,8 @@ void I001_020_Handler::decode(Asterix1Report& report, std::string_view data) con
  * @param data The raw data buffer for this item (4 bytes).
  */
 void I001_040_Handler::decode(Asterix1Report& report, std::string_view data) const {
-    uint16_t rawRange;
-    uint16_t rawAzimuth;
-
-    // Use memcpy for type-punning, a safer alternative to C-style casts.
-    // The data is big-endian (network byte order).
-    std::memcpy(&rawRange, data.data(), 2);
-    std::memcpy(&rawAzimuth, data.data() + 2, 2);
-
-    rawRange   = ntohs(rawRange);
-    rawAzimuth = ntohs(rawAzimuth);
+    auto rawRange   = readBigEndian<uint16_t>(data.data());
+    auto rawAzimuth = readBigEndian<uint16_t>(data.data() + 2);
 
     // Range: LSB = 1/128 NM converted to meters
     // 1852.0 is the standard Nautical Mile to Meters conversion
@@ -176,9 +169,7 @@ void I001_070_Handler::decode(Asterix1Report& report, std::string_view data) con
     const bool garbled   = reader.readBit(bit);
     const bool local     = reader.readBit(bit);
 
-    uint16_t mode3ATemp;
-    std::memcpy(&mode3ATemp, data.data(), 2);
-    mode3ATemp = ntohs(mode3ATemp);
+    auto mode3ATemp = readBigEndian<uint16_t>(data.data());
 
     // Extract the 12 bits of the Mode 3/A code (0x0fff mask).
     uint16_t mode3A = mode3ATemp & 0x0FFF;
@@ -204,9 +195,7 @@ void I001_090_Handler::decode(Asterix1Report& report, std::string_view data) con
     const bool v = !reader.readBit(bit);
     const bool g = reader.readBit(bit);
 
-    uint16_t flightLevelTemp;
-    std::memcpy(&flightLevelTemp, data.data(), 2);
-    flightLevelTemp = ntohs(flightLevelTemp);
+    auto flightLevelTemp = readBigEndian<uint16_t>(data.data());
 
     // Clear the reserved bits and extract the 14-bit value.
     flightLevelTemp &= 0x3FFF;
@@ -244,7 +233,7 @@ void I001_090_Handler::decode(Asterix1Report& report, std::string_view data) con
  * @param data The raw data buffer for this item (2 bytes).
  */
 void I001_141_Handler::decode(Asterix1Report& report, std::string_view data) const {
-    report.todLSP = (static_cast<uint16_t>(data[0]) << 8) | static_cast<uint8_t>(data[1]);
+    report.todLSP = readBigEndian<uint16_t>(data.data());
     report.presenceMask |= Asterix1Report::Presence::HAS_LSP_CLOCK;
 }
 

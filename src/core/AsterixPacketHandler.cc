@@ -25,20 +25,9 @@
 
 // Library headers
 #include <ReactorAsterix/core/AsterixConstants.h>
+#include <ReactorAsterix/core/EndianUtils.h>
 
 namespace ReactorAsterix {
-
-namespace {
-    // Helper to safely read Big Endian 16-bit integer from a view
-    // returns 0 if view is too small, but caller usually checks bounds first.
-    inline uint16_t readBe16(std::string_view sv, size_t offset) {
-        if (offset + 2 > sv.size()) return 0;
-        uint16_t tmp;
-        // Safe against alignment violations
-        std::memcpy(&tmp, sv.data() + offset, sizeof(uint16_t));
-        return ntohs(tmp);
-    }
-}
 
 /**
  * @brief Registers a handler for a specific ASTERIX category.
@@ -135,7 +124,7 @@ size_t AsterixPacketHandler::processDataBlock(
     const auto category = static_cast<uint8_t>(block[0]);
 
     // Read Length (Octets 2-3) using helper
-    const uint16_t length = readBe16(block, 1);
+    const uint16_t length = readBigEndian<uint16_t>(block.data() + 1);
 
     // Sanity Checks:
     // Length must be at least the size of the header.

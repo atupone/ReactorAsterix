@@ -24,6 +24,7 @@
 #include <cstring>
 
 // Library headers
+#include <ReactorAsterix/core/EndianUtils.h>
 #include <ReactorAsterix/cat002/Asterix2Report.h>
 
 namespace ReactorAsterix {
@@ -81,10 +82,7 @@ void I002_030_Handler::decode(Asterix2Report& context, std::string_view data) co
  * @param data The raw data buffer containing the 2-byte speed value.
  */
 void I002_041_Handler::decode(Asterix2Report& context, std::string_view data) const {
-    uint16_t speedTemp;
-    memcpy(&speedTemp, data.data(), 2);
-    // Convert from Network Byte Order (Big-Endian) to Host Byte Order.
-    speedTemp = ntohs(speedTemp);
+    auto speedTemp = readBigEndian<uint16_t>(data.data());
 
     // The value is in units of 1/128 RPM.
     context.setAntennaSpeed(speedTemp / 128.0f);
