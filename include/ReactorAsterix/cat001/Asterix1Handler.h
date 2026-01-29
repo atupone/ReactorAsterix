@@ -44,7 +44,10 @@ class Asterix1Handler final
             I001_070_Handler,
             I001_090_Handler,
             I001_130_Handler,
-            I001_141_Handler
+            I001_141_Handler,
+            I001_050_Handler,
+            I001_131_Handler,
+            I001_150_Handler
         >;
 
         // Define the F-Spec bitmasks as static constexpr
