@@ -18,6 +18,7 @@
 #pragma once
 
 // System headers
+#include <arpa/inet.h>
 #include <cstring>
 
 namespace ReactorAsterix {

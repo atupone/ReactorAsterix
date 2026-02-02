@@ -47,6 +47,8 @@ class Asterix034Handler final
             I034_120_Handler
         >;
 
+        static constexpr uint8_t Category = 34;
+
         // Define the F-Spec bitmasks as static constexpr
         // These are computed once at compile time based on the handler types
         static constexpr auto supportedFspec_ = FspecBuilder<HandlerTypes>::buildSupported();

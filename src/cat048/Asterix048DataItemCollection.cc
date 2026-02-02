@@ -16,33 +16,29 @@
  */
 
 // Interface
-#include <ReactorAsterix/cat001/Asterix1DataItemCollection.h>
+#include <ReactorAsterix/cat048/Asterix048DataItemCollection.h>
 
-// System headers
-#include <arpa/inet.h>
-#include <cstring>
-#include <iostream>
 
 // Library headers
 #include <ReactorAsterix/core/AsterixDiagnostics.h>
 #include <ReactorAsterix/core/EndianUtils.h>
 #include <ReactorAsterix/core/FastBitReader.h>
-#include <ReactorAsterix/cat001/Asterix1Report.h>
+#include <ReactorAsterix/cat048/Asterix048Report.h>
 
 namespace ReactorAsterix {
 
 /**
- * @brief Handler for ASTERIX Data Item I001/010, Data Source Identifier.
+ * @brief Handler for ASTERIX Data Item I048/010, Data Source Identifier.
  *
  * This item provides the System Area Code (SAC) and System Identification Code (SIC)
  * to uniquely identify the data source (e.g., the radar station).
  *
  * The first byte is the SAC, and the second byte is the SIC.
  *
- * @param report The target `Asterix1Report` object.
+ * @param report The target `Asterix048Report` object.
  * @param data The raw data buffer for this item (2 bytes).
  */
-void I001_010_Handler::decode(Asterix1Report& report, std::string_view data) const {
+void I048_010_Handler::decode(Asterix048Report& report, std::string_view data) const {
     // data[0] is the System Area Code (SAC), and data[1] is the System Identification Code (SIC).
     // Explicit cast to avoid sign-conversion warnings
     uint8_t sac = static_cast<uint8_t>(data[0]);
@@ -53,38 +49,42 @@ void I001_010_Handler::decode(Asterix1Report& report, std::string_view data) con
 // ----------------------------------------------------------------------------------
 
 /**
- * @brief Handler for ASTERIX Data Item I001/020, Target Report Descriptor.
+ * @brief Handler for ASTERIX Data Item I048/020, Target Report Descriptor.
  *
  * This extended length item provides information about the type and status of the report.
  * It contains subfields for Report Type, Special Position Identification (SPI), and Emergency status.
  *
  * The first byte is the main TRD. Further bytes extend the information if the FX bit is set.
  *
- * @param report The target `Asterix1Report` object.
+ * @param report The target `Asterix048Report` object.
  * @param data The raw data buffer for this item.
  */
-void I001_020_Handler::decode(Asterix1Report& report, std::string_view data) const {
+void I048_020_Handler::decode(Asterix048Report& report, std::string_view data) const {
     const uint8_t* raw = reinterpret_cast<const uint8_t*>(data.data());
     FastBitReader reader(raw);
     int bit = 7; // Start at MSB
 
-    // Check for uninterpreted reserved bits in the first octet (bits 7, and 6).
-    uint8_t res = reader.readBits<2>(bit);
-    if (res) {
+    // Decode the 3 bits of the TYP (bits 8, 7 and 6).
+    uint8_t typ = reader.readBits<3>(bit);
+    report.setTYP(typ);
+
+    // Decode the SIM bit (Simulation - bits 5).
+    const uint8_t sim = reader.readBit(bit);
+    if (sim) {
         stats_ptr->uninterpretedItems.fetch_add(1, std::memory_order_relaxed);
         return;
     }
 
-    // Decode the 2 bits of the SSR/PSR (Target Report Type - bits 5-4).
-    const uint8_t ssr_psr = reader.readBits<2>(bit);
-    report.setSSR_PSR(ssr_psr);
+    // Decode the RDP bit (Radar Display Processor Chain - bits 4).
+    bit--;
 
-    // Decode the SPI bit (Special Position Identification - bit 2).
+    // Decode the SPI bit (Special Position Identification - bit 3).
     bool spi = reader.readBit(bit);
     report.setSPI(spi);
 
-    res = reader.readBits<2>(bit);
-    if (res) {
+    // Decode the RAB bit (Report from Aircraft Transponder - bit 2).
+    bool rab = reader.readBit(bit);
+    if (rab) {
         stats_ptr->uninterpretedItems.fetch_add(1, std::memory_order_relaxed);
         return;
     }
@@ -92,52 +92,52 @@ void I001_020_Handler::decode(Asterix1Report& report, std::string_view data) con
     // Check the FX bit (bit 0) to see if the second octet exists.
     bool fx = reader.readBit(bit);
     if (fx) {
-        bool resB = reader.readBit(bit);
-        if (resB) {
+	// Decode TST bit (Test, bit 8 2nd byte)
+        bool tst = reader.readBit(bit);
+	if (tst) {
             stats_ptr->uninterpretedItems.fetch_add(1, std::memory_order_relaxed);
             return;
         }
-
-        // Decode the 2 bits of the EMG (Emergency) subfield (bits 5-4).
-        const uint8_t ds1ds2 = reader.readBits<2>(bit);
-        report.setDs1Ds2(ds1ds2);
-
-        res = reader.readBits<2>(bit);
-        if (res) {
-            stats_ptr->uninterpretedItems.fetch_add(1, std::memory_order_relaxed);
-            return;
-        }
-
-        bit -= 2;
-
-        // Check the FX bit (bit 0) of the second octet for the third octet.
-        fx = reader.readBit(bit);
-    }
-    if (fx) {
-        stats_ptr->uninterpretedItems.fetch_add(1, std::memory_order_relaxed);
     }
 }
 
 // ----------------------------------------------------------------------------------
 
 /**
- * @brief Handler for ASTERIX Data Item I001/040, Measured Position in Polar Coordinates.
+ * @brief Decodes the 3-byte Time of Day (TOD).
+ * The TOD value is constructed from the three bytes, where the unit is in
+ * 1/128 seconds.
+ *
+ * @param context The target context object (Asterix048Report) to store the result.
+ * @param data The raw data buffer containing the 3 bytes of TOD.
+ */
+void I048_140_Handler::decode(Asterix048Report& context, std::string_view data) const {
+    if (data.size() < fixedSize) [[unlikely]] {
+        return;
+    }
+
+    context.TOD = decodeBigEndian<uint32_t>(data.substr(0, 3));
+}
+
+// ----------------------------------------------------------------------------------
+/**
+ * @brief Handler for ASTERIX Data Item I048/040, Measured Position in Polar Coordinates.
  *
  * This item contains the target's measured range and azimuth from the radar site.
  *
  * The data is 4 bytes: 2 for range and 2 for azimuth, both in big-endian format.
- * Range is scaled by $(1/128) \text{ NM}$. Azimuth is scaled by $(\pi/4) / 8192 \text{ radians}$.
+ * Range is scaled by 1/256 NM. Azimuth is scaled by pi/4 / 8192 radians.
  *
- * @param report The target `Asterix1Report` object.
+ * @param report The target `Asterix48Report` object.
  * @param data The raw data buffer for this item (4 bytes).
  */
-void I001_040_Handler::decode(Asterix1Report& report, std::string_view data) const {
+void I048_040_Handler::decode(Asterix048Report& report, std::string_view data) const {
     auto rawRange   = readBigEndian<uint16_t>(data.data());
     auto rawAzimuth = readBigEndian<uint16_t>(data.data() + 2);
 
-    // Range: LSB = 1/128 NM converted to meters
+    // Range: LSB = 1/256 NM converted to meters
     // 1852.0 is the standard Nautical Mile to Meters conversion
-    report.range = (static_cast<double>(rawRange) / 128.0) * 1852.0;
+    report.range = (static_cast<double>(rawRange) / 256.0) * 1852.0;
 
     // Azimuth: LSB = (pi/4) / 8192 radians
     // Which is 2*PI / 65536
@@ -148,7 +148,7 @@ void I001_040_Handler::decode(Asterix1Report& report, std::string_view data) con
 // ----------------------------------------------------------------------------------
 
 /**
- * @brief Handler for ASTERIX Data Item I001/070, Mode-3/A Code.
+ * @brief Handler for ASTERIX Data Item I048/070, Mode-3/A Code.
  *
  * Contains the Mode-3/A code (squawk) in octal representation, typically used for
  * aircraft identification.
@@ -156,10 +156,10 @@ void I001_040_Handler::decode(Asterix1Report& report, std::string_view data) con
  * The code is present if the top three bits (15, 14, 13) are all zero.
  * The 12-bit code is then extracted.
  *
- * @param report The target `Asterix1Report` object.
+ * @param report The target `Asterix048Report` object.
  * @param data The raw data buffer for this item (2 bytes).
  */
-void I001_070_Handler::decode(Asterix1Report& report, std::string_view data) const {
+void I048_070_Handler::decode(Asterix048Report& report, std::string_view data) const {
     const uint8_t* raw = reinterpret_cast<const uint8_t*>(data.data());
     FastBitReader reader(raw);
     int bit = 7; // Start at MSB
@@ -177,17 +177,17 @@ void I001_070_Handler::decode(Asterix1Report& report, std::string_view data) con
 }
 
 /**
- * @brief Handler for ASTERIX Data Item I001/090, Mode-C Code (Flight Level).
+ * @brief Handler for ASTERIX Data Item I048/090, Flight Level in Binary Representation.
  *
  * Contains the Mode-C code, which represents the flight level (altitude) of the target.
  *
  * The code is present if the top two bits (15, 14) are zero.
- * The 14-bit value is scaled by $(1/4) \text{ NM}$ and converted to meters.
+ * The 14-bit value is scaled by 25 ft and converted to meters.
  *
- * @param report The target `Asterix1Report` object.
+ * @param report The target `Asterix048Report` object.
  * @param data The raw data buffer for this item (2 bytes).
  */
-void I001_090_Handler::decode(Asterix1Report& report, std::string_view data) const {
+void I048_090_Handler::decode(Asterix048Report& report, std::string_view data) const {
     const uint8_t* raw = reinterpret_cast<const uint8_t*>(data.data());
     FastBitReader reader(raw);
     int bit = 7; // Start at MSB
@@ -221,20 +221,9 @@ void I001_090_Handler::decode(Asterix1Report& report, std::string_view data) con
 
 // ----------------------------------------------------------------------------------
 
-/**
- * @brief Handler for ASTERIX Data Item I001/141, Truncated Time of Day.
- *
- * A 2-byte item representing the time of day, truncated to a fixed resolution.
- *
- * Combines the two big-endian bytes into a single 16-bit value.
- *
- * @param report The target `Asterix1Report` object.
- * @param data The raw data buffer for this item (2 bytes).
- */
-void I001_141_Handler::decode(Asterix1Report& report, std::string_view data) const {
-    report.todLSP = readBigEndian<uint16_t>(data.data());
-    report.presenceMask |= Asterix1Report::Presence::HAS_LSP_CLOCK;
-}
+
+
+
 
 } // namespace ReactorAsterix
 

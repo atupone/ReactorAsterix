@@ -58,9 +58,10 @@ endif()
 set(LIB_HEADERS
     include/ReactorAsterix/core/AsterixCategoryHandler.h
     include/ReactorAsterix/core/AsterixConstants.h
+    include/ReactorAsterix/core/AsterixDataItemHandlerBase.h
     include/ReactorAsterix/core/AsterixDataItemHandlerExtendedLength.h
     include/ReactorAsterix/core/AsterixDataItemHandlerFixedLength.h
-    include/ReactorAsterix/core/AsterixDataItemHandlerBase.h
+    include/ReactorAsterix/core/AsterixDataItemHandlerRepetitive.h
     include/ReactorAsterix/core/AsterixDiagnostics.h
     include/ReactorAsterix/core/AsterixMessage.h
     include/ReactorAsterix/core/AsterixPacketHandler.h
@@ -80,6 +81,10 @@ set(LIB_HEADERS
     include/ReactorAsterix/cat034/IAsterix034Listener.h
     include/ReactorAsterix/cat034/Asterix034DataItemCollection.h
     include/ReactorAsterix/cat034/Asterix034Handler.h
+    include/ReactorAsterix/cat048/Asterix048Report.h
+    include/ReactorAsterix/cat048/IAsterix048Listener.h
+    include/ReactorAsterix/cat048/Asterix048DataItemCollection.h
+    include/ReactorAsterix/cat048/Asterix048Handler.h
 )
 
 set(LIB_SOURCES
@@ -90,6 +95,8 @@ set(LIB_SOURCES
     src/cat002/Asterix2Handler.cc
     src/cat034/Asterix034DataItemCollection.cc
     src/cat034/Asterix034Handler.cc
+    src/cat048/Asterix048DataItemCollection.cc
+    src/cat048/Asterix048Handler.cc
 )
 
 # Create the SHARED library

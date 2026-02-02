@@ -26,6 +26,7 @@
 #include <memory>
 #include <mutex>
 #include <vector>
+#include <iostream>
 
 // Libray headers
 #include <ReactorAsterix/core/IAsterixDataItemHandler.h>
@@ -280,9 +281,20 @@ class AsterixCategoryHandler : public IAsterixCategoryHandler {
                 // in the extra bytes is unsupported by definition.
                 uint8_t mask = (i < supported.size()) ? supported[i] : 0;
 
+                // bits set in received but NOT in supported mask
+                uint8_t unsupportedBits = (received & ~mask) & 0xFE;
+
                 // (received & ~mask) identifies bits set that we don't support.
                 // We & with 0xFE to ignore the FX (extension) bit.
-                if ((received & ~mask) & 0xFE) {
+                if (unsupportedBits) {
+                    // Logic to identify the FRN:
+                    for (uint8_t bit = 0; bit < 7; ++bit) {
+                        if (unsupportedBits & (0x80 >> bit)) {
+                            size_t missingFrn = (i * 7) + static_cast<size_t>(bit + 1);
+                            std::cerr << "[Asterix] Category " << (int)Derived::Category
+                                << " - Missing handler for FRN " << missingFrn << std::endl;
+                        }
+                    }
                     return false;
                 }
             }

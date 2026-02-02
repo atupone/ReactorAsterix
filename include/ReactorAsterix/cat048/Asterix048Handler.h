@@ -19,38 +19,46 @@
 
 // Inherits from
 #include <ReactorAsterix/core/AsterixCategoryHandler.h>
-#include <ReactorAsterix/cat001/Asterix1Report.h>
+#include <ReactorAsterix/cat048/Asterix048Report.h>
 
 // Library headers
 #include <ReactorAsterix/core/SourceStateManager.h>
-#include <ReactorAsterix/cat001/IAsterix1Listener.h>
-#include <ReactorAsterix/cat001/Asterix1DataItemCollection.h>
+#include <ReactorAsterix/cat048/IAsterix048Listener.h>
+#include <ReactorAsterix/cat048/Asterix048DataItemCollection.h>
 
 namespace ReactorAsterix {
 
 /**
- * @class Asterix1Handler
- * @brief Handles ASTERIX Category 1: Monoradar Target Reports.
+ * @class Asterix048Handler
+ * @brief Handles ASTERIX Category 048: Monoradar Target Reports.
  */
-class Asterix1Handler final
-    : public AsterixCategoryHandler<Asterix1Report, IAsterix1Listener, Asterix1Handler> {
+class Asterix048Handler final
+    : public AsterixCategoryHandler<Asterix048Report, IAsterix048Listener, Asterix048Handler> {
         // This line is essential for CRTP to work with private members:
-        friend class AsterixCategoryHandler<Asterix1Report, IAsterix1Listener, Asterix1Handler>;
+        friend class AsterixCategoryHandler<Asterix048Report, IAsterix048Listener, Asterix048Handler>;
     public:
         using HandlerTypes = std::tuple<
-            I001_010_Handler,
-            I001_020_Handler,
-            I001_040_Handler,
-            I001_070_Handler,
-            I001_090_Handler,
-            I001_130_Handler,
-            I001_141_Handler,
-            I001_050_Handler,
-            I001_131_Handler,
-            I001_150_Handler
+            I048_010_Handler,
+            I048_140_Handler,
+            I048_020_Handler,
+            I048_040_Handler,
+            I048_070_Handler,
+            I048_090_Handler,
+            I048_220_Handler,
+            I048_240_Handler,
+            I048_250_Handler,
+            I048_161_Handler,
+            I048_042_Handler,
+            I048_200_Handler,
+            I048_170_Handler,
+            I048_100_Handler,
+            I048_110_Handler,
+            I048_230_Handler,
+            I048_055_Handler,
+            I048_050_Handler
         >;
 
-        static constexpr uint8_t Category = 1;
+        static constexpr uint8_t Category = 48;
 
         // Define the F-Spec bitmasks as static constexpr
         // These are computed once at compile time based on the handler types
@@ -61,35 +69,24 @@ class Asterix1Handler final
         /**
          * @brief Constructor that initializes the data item handlers.
          */
-        explicit Asterix1Handler(std::shared_ptr<SourceStateManager> manager);
+        explicit Asterix048Handler(std::shared_ptr<SourceStateManager> manager);
 
         void setStats(AsterixStats& s) override;
 
     protected:
         // Implementation of the Hook: Time Synchronization Logic
-        bool onAfterDecode(Asterix1Report& report, struct timespec ts);
+        bool onAfterDecode(Asterix048Report& report, struct timespec ts);
 
-    private:
-        /**
-         * @brief Pure logic helper: Expands 16-bit truncated TOD.
-         * Static because it depends only on inputs, not object state.
-         */
-        static uint32_t expandTruncatedTime(uint16_t truncated, uint32_t reference) noexcept;
-
-        /**
-         * @brief Pure logic helper: Gets system time in ASTERIX units.
-         */
-        static uint32_t calculateCurrentTod(struct timespec ts) noexcept;
 
         /**
          * @brief This is the "Hot Path".
          * Because we call methods on named members, the compiler
          * will likely INLINE these calls.
          */
-        bool dispatch(int frn, Asterix1Report& report, std::string_view& data);
+        bool dispatch(int frn, Asterix048Report& report, std::string_view& data);
 
         // Supports multiple sinks (Logger, Tracker, Display)
-        std::vector<std::weak_ptr<IAsterix1Listener>> listeners;
+        std::vector<std::weak_ptr<IAsterix048Listener>> listeners;
 
         // C++17 Reader-Writer Lock
         mutable std::shared_mutex listenerMutex;
