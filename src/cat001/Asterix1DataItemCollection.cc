@@ -108,7 +108,7 @@ void I001_020_Handler::decode(Asterix1Report& report, std::string_view data) con
             return;
         }
 
-        bit -= 2;
+        reader.skipBits(bit, 2);
 
         // Check the FX bit (bit 0) of the second octet for the third octet.
         fx = reader.readBit(bit);

@@ -69,6 +69,14 @@ class FastBitReader {
             return val;
         }
 
+        void skipBits(int& bitOffset, int n) const {
+            bitOffset -= n;
+            while (bitOffset < 0) {
+                data_++;
+                bitOffset += 8;
+            }
+        }
+
     private:
         mutable const uint8_t* data_;
 };

@@ -76,7 +76,7 @@ void I048_020_Handler::decode(Asterix048Report& report, std::string_view data) c
     }
 
     // Decode the RDP bit (Radar Display Processor Chain - bits 4).
-    bit--;
+    reader.skipBits(bit, 1);
 
     // Decode the SPI bit (Special Position Identification - bit 3).
     bool spi = reader.readBit(bit);
