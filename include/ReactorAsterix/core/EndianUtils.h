@@ -18,6 +18,7 @@
 #pragma once
 
 // System headers
+#include <cstring>
 
 namespace ReactorAsterix {
 
@@ -28,6 +29,33 @@ T readBigEndian(const void* src) {
     if constexpr (sizeof(T) == 2) return ntohs(val);
     if constexpr (sizeof(T) == 4) return ntohl(val);
     return val;
+}
+
+template<typename T>
+inline T decodeBigEndian(std::string_view data) {
+    T val = 0;
+    for (size_t i = 0; i < sizeof(T) && i < data.size(); ++i) {
+        val = (val << 8) | static_cast<uint8_t>(data[i]);
+    }
+    return val;
+}
+
+/**
+ * @brief Decodes a 3-byte Big-Endian signed integer.
+ * Hardcoded for 24-bit ASTERIX fields (Coordinates).
+ */
+inline int32_t decode24BitSigned(std::string_view data) {
+    // data.substr(offset, 3) is assumed
+    uint32_t val =
+        (static_cast<uint8_t>(data[0]) << 16) |
+        (static_cast<uint8_t>(data[1]) << 8)  |
+        (static_cast<uint8_t>(data[2]));
+
+    // If bit 23 is set, it's negative. Sign-extend to 32 bits.
+    if (val & 0x800000) {
+        val |= 0xFF000000;
+    }
+    return static_cast<int32_t>(val);
 }
 
 }

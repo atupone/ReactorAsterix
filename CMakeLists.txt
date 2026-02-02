@@ -76,6 +76,10 @@ set(LIB_HEADERS
     include/ReactorAsterix/cat002/Asterix2Handler.h
     include/ReactorAsterix/cat002/Asterix2Report.h
     include/ReactorAsterix/cat002/IAsterix2Listener.h
+    include/ReactorAsterix/cat034/Asterix034Report.h
+    include/ReactorAsterix/cat034/IAsterix034Listener.h
+    include/ReactorAsterix/cat034/Asterix034DataItemCollection.h
+    include/ReactorAsterix/cat034/Asterix034Handler.h
 )
 
 set(LIB_SOURCES
@@ -84,6 +88,8 @@ set(LIB_SOURCES
     src/cat001/Asterix1Handler.cc
     src/cat002/Asterix2DataItemCollection.cc
     src/cat002/Asterix2Handler.cc
+    src/cat034/Asterix034DataItemCollection.cc
+    src/cat034/Asterix034Handler.cc
 )
 
 # Create the SHARED library
