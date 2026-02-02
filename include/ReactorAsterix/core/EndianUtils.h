@@ -34,10 +34,14 @@ T readBigEndian(const void* src) {
 
 template<typename T>
 inline T decodeBigEndian(std::string_view data) {
-    T val = 0;
-    for (size_t i = 0; i < sizeof(T) && i < data.size(); ++i) {
-        val = (val << 8) | static_cast<uint8_t>(data[i]);
-    }
+    if (data.size() < sizeof(T)) return 0;
+
+    T val;
+    std::memcpy(&val, data.data(), sizeof(T));
+
+    if constexpr (sizeof(T) == 2) return ntohs(val);
+    if constexpr (sizeof(T) == 4) return ntohl(val);
+    if constexpr (sizeof(T) == 8) return be64toh(val);
     return val;
 }
 
