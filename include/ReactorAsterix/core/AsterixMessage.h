@@ -55,8 +55,27 @@ class AsterixMessage {
 
             // If the handler provided a manager, we "hook" into the persistent state
             if (manager) {
-                // This retrieves the stable pointer from the deque
-                sourceRecord = manager->getOrCreateRecord(sourceIdentifier);
+                // Use a combined 16-bit key for the fastest possible comparison
+                uint16_t currentKey = (static_cast<uint16_t>(sac) << 8) | sic;
+
+                // Define the static thread_local cache within the method
+                static thread_local uint16_t lastKey
+                    __attribute__((tls_model("initial-exec"))) = 0;
+                static thread_local const SourceRecord* cachedRecord
+                    __attribute__((tls_model("initial-exec"))) = nullptr;
+
+                if (currentKey == lastKey && cachedRecord) [[likely]] {
+                    // SUCCESS: Reuse the record from the previous message (any category)
+                    sourceRecord = cachedRecord;
+                } else {
+                    // MISS: Different radar or first time. Perform the expensive lock.
+                    // This retrieves the stable pointer from the deque
+                    sourceRecord = manager->getOrCreateRecord(sourceIdentifier);
+
+                    // Update the cache for the next message in this thread
+                    cachedRecord = sourceRecord;
+                    lastKey = currentKey;
+                }
             }
         }
 };
