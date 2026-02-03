@@ -49,6 +49,9 @@ if(STRICT_WERROR)
     add_compile_options(-Werror)
 endif()
 
+# Option to enable/disable examples (Default is OFF)
+option(BUILD_EXAMPLES "Build the example applications" OFF)
+
 # ---------------------------------------------------------------------------
 # THE LIBRARY
 # ---------------------------------------------------------------------------
@@ -146,41 +149,45 @@ add_executable(unit_tests tests/test_cat001.cc)
 target_link_libraries(unit_tests PRIVATE ReactorAsterix GTest::gtest_main)
 add_test(NAME AllTests COMMAND unit_tests)
 
-add_executable(asterix_pro_example examples/example_pro.cc)
+if(BUILD_EXAMPLES)
+        message(STATUS "Building ReactorAsterix examples")
 
-target_link_libraries(asterix_pro_example PRIVATE ReactorAsterix)
+        # Standard example
+        add_executable(asterix_pro_example examples/example_pro.cc)
 
-# Set include paths for the example
-target_include_directories(asterix_pro_example PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/include)
+        target_link_libraries(asterix_pro_example PRIVATE ReactorAsterix)
 
-# C++17 Best Practices: Enable extra warnings and treat them as errors if needed
-target_compile_options(asterix_pro_example PRIVATE -Wall -Wextra -Wpedantic)
+        # Set include paths for the example
+        target_include_directories(asterix_pro_example PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/include)
 
-# Convenience target: 'make run_example'
-add_custom_target(run_example
-    COMMAND asterix_pro_example
-    DEPENDS asterix_pro_example
-    COMMENT "Running the improved ASTERIX example..."
-)
+        # C++17 Best Practices: Enable extra warnings and treat them as errors if needed
+        target_compile_options(asterix_pro_example PRIVATE -Wall -Wextra -Wpedantic)
 
-# Check if AtuReactor is available on the system
-find_package(AtuReactor QUIET)
+        # Check if AtuReactor is available on the system
+        find_package(AtuReactor QUIET)
 
-if(AtuReactor_FOUND)
-    message(STATUS "AtuReactor found: enabling networking examples")
+        if(AtuReactor_FOUND)
+            message(STATUS "AtuReactor found: enabling networking examples")
 
-    add_executable(atu_asterix_receiver examples/atu_asterix_receiver.cc)
+            add_executable(atu_asterix_receiver examples/atu_asterix_receiver.cc)
 
-    # Link against your library and the networking library
-    target_link_libraries(atu_asterix_receiver PRIVATE
-        ReactorAsterix
-        AtuReactor::AtuReactor
-    )
+            # Link against your library and the networking library
+            target_link_libraries(atu_asterix_receiver PRIVATE
+                ReactorAsterix
+                AtuReactor::AtuReactor
+            )
+            # Ensure include paths are correct
+            target_include_directories(atu_asterix_receiver PRIVATE
+                ${CMAKE_CURRENT_SOURCE_DIR}/include
+            )
 
-    # Ensure include paths are correct
-    target_include_directories(atu_asterix_receiver PRIVATE
-        ${CMAKE_CURRENT_SOURCE_DIR}/include
-    )
-else()
-    message(WARNING "AtuReactor not found. Skipping networking examples.")
+            add_executable(asterix_replay examples/asterix_replay.cc)
+            target_link_libraries(asterix_replay PRIVATE
+                    ReactorAsterix
+                    AtuReactor::AtuReactor
+            )
+            target_include_directories(asterix_replay PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/include)
+        else()
+            message(WARNING "AtuReactor not found. Skipping networking examples.")
+        endif()
 endif()
