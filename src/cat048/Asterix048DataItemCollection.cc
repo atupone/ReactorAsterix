@@ -75,7 +75,7 @@ void I048_020_Handler::decode(Asterix048Report& report, std::string_view data) c
         return;
     }
 
-    // Decode the RDP bit (Radar Display Processor Chain - bits 4).
+    // skip the RDP bit (Radar Display Processor Chain - bits 4).
     reader.skipBits(bit, 1);
 
     // Decode the SPI bit (Special Position Identification - bit 3).
@@ -92,12 +92,18 @@ void I048_020_Handler::decode(Asterix048Report& report, std::string_view data) c
     // Check the FX bit (bit 0) to see if the second octet exists.
     bool fx = reader.readBit(bit);
     if (fx) {
-	// Decode TST bit (Test, bit 8 2nd byte)
+        // Decode TST bit (Test, bit 8 2nd byte)
         bool tst = reader.readBit(bit);
-	if (tst) {
+        if (tst) {
             stats_ptr->uninterpretedItems.fetch_add(1, std::memory_order_relaxed);
             return;
         }
+
+        // skip the ERR and XPP bit (Extended Range, X-Pulse - bits 7-6).
+        reader.skipBits(bit, 2);
+
+        bool me = reader.readBit(bit);
+        report.setME(me);
     }
 }
 
@@ -135,14 +141,7 @@ void I048_040_Handler::decode(Asterix048Report& report, std::string_view data) c
     auto rawRange   = readBigEndian<uint16_t>(data.data());
     auto rawAzimuth = readBigEndian<uint16_t>(data.data() + 2);
 
-    // Range: LSB = 1/256 NM converted to meters
-    // 1852.0 is the standard Nautical Mile to Meters conversion
-    report.range = (static_cast<double>(rawRange) / 256.0) * 1852.0;
-
-    // Azimuth: LSB = (pi/4) / 8192 radians
-    // Which is 2*PI / 65536
-    constexpr double AZIMUTH_SCALE = 0.00009587379; // (M_PI / 32768.0)
-    report.azimuth = static_cast<double>(rawAzimuth) * AZIMUTH_SCALE;
+    report.setMeasuredCoordinates(rawRange, rawAzimuth);
 }
 
 // ----------------------------------------------------------------------------------
@@ -181,7 +180,6 @@ void I048_070_Handler::decode(Asterix048Report& report, std::string_view data) c
  *
  * Contains the Mode-C code, which represents the flight level (altitude) of the target.
  *
- * The code is present if the top two bits (15, 14) are zero.
  * The 14-bit value is scaled by 25 ft and converted to meters.
  *
  * @param report The target `Asterix048Report` object.
@@ -209,14 +207,33 @@ void I048_090_Handler::decode(Asterix048Report& report, std::string_view data) c
 
     int16_t flValue = static_cast<int16_t>(flightLevelTemp);
 
-    // The resolution is 25 feet. The scale factor converts
-    // the signed 16-bit value (interpreted as a flight level) to meters.
-    constexpr double HEIGHT_SCALE = 25.0 * 0.3048;
+    report.setSSRHeight(flValue, v, g);
+}
 
-    // Cast to int16_t to correctly interpret the signed value after sign extension.
-    double height = flValue * HEIGHT_SCALE;
+/**
+ * @brief Handler for ASTERIX Data Item I048/110, Height from a 3D-Radar
+ *
+ * Contains the height (altitude) of the target is 25ft.
+ *
+ * @param report The target `Asterix048Report` object.
+ * @param data The raw data buffer for this item (2 bytes).
+ */
+void I048_110_Handler::decode(Asterix048Report& report, std::string_view data) const {
+    auto flightLevelTemp = readBigEndian<uint16_t>(data.data());
 
-    report.setSSRHeight(height, v, g);
+    // Clear the reserved bits and extract the 14-bit value.
+    flightLevelTemp &= 0x3FFF;
+
+    // The height value is a signed 14-bit integer, so perform sign extension.
+    // If the MSB of the 14-bit value (bit 13, mask 0x2000) is set,
+    // we set the upper bits (15 and 14) to 1 to complete the 16-bit sign extension.
+    if (flightLevelTemp & 0x2000) {
+        flightLevelTemp |= 0xC000;
+    }
+
+    int16_t flValue = static_cast<int16_t>(flightLevelTemp);
+
+    report.setSRHeight(flValue);
 }
 
 // ----------------------------------------------------------------------------------

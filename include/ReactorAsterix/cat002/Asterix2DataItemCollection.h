@@ -97,7 +97,7 @@ class I002_020_Handler final : public AsterixDataItemHandlerFixedLength<Asterix2
  * This mandatory, 3-byte item represents the time of day, typically as the
  * number of seconds since midnight, in 1/128 second increments.
  */
-class I002_030_Handler : public AsterixDataItemHandlerFixedLength<Asterix2Report> {
+class I002_030_Handler final : public AsterixDataItemHandlerFixedLength<Asterix2Report> {
     public:
         static constexpr uint8_t FRN = 4;
         static constexpr bool mandatory = true;

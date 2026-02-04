@@ -267,6 +267,13 @@ class I048_110_Handler final : public AsterixDataItemHandlerFixedLength<Asterix0
         I048_110_Handler() : AsterixDataItemHandlerFixedLength<Asterix048Report>(2) {
             name = "I048/110 Height measured by a 3D Radar";
         }
+
+        /**
+         * @brief Decodes the 2-byte Height from 3D Radar and converts it to a height in meters.
+         * @param context The target `Asterix048Report` object.
+         * @param data The raw data buffer.
+         */
+        void decode(Asterix048Report& context, std::string_view data) const override;
 };
 
 /**

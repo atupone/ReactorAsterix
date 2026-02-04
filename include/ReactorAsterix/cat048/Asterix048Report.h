@@ -36,8 +36,10 @@ class Asterix048Report final : public AsterixMessage {
         ~Asterix048Report() override = default;
 
         enum Presence : uint16_t {
-            HAS_MODE_3A   = 1 << 0,
-            HAS_HEIGHT    = 1 << 1,
+            HAS_MODE_3A      = 1 << 0,
+            HAS_SR_HEIGHT    = 1 << 1,
+            HAS_SSR_HEIGHT   = 1 << 2,
+            HAS_MEASUR_COORD = 1 << 3,
         };
 
         uint16_t presenceMask = 0;
@@ -49,10 +51,10 @@ class Asterix048Report final : public AsterixMessage {
             SINGLE_PSR_DETECTION   = 1,
             SINGLE_SSR_DETECTION   = 2,
             SSR_PSR_DETECTION      = 3,
-	    SINGLE_MODES_ALL_CALL  = 4,
-	    SINGLE_MODES_ROLL_CALL = 5,
-	    MODES_ALL_CALL_PSR     = 6,
-	    MODES_ROLL_CALL_PSR    = 7
+            SINGLE_MODES_ALL_CALL  = 4,
+            SINGLE_MODES_ROLL_CALL = 5,
+            MODES_ALL_CALL_PSR     = 6,
+            MODES_ROLL_CALL_PSR    = 7
         };
 
 
@@ -76,6 +78,8 @@ class Asterix048Report final : public AsterixMessage {
             bool garbled   : 1;
         } ssrHeight;
 
+        double srHeight{0.0};
+
         // Check: if (report.has(Asterix1Report::HAS_MODE_3A)) ...
         bool has(Presence p) const { return presenceMask & p; }
 
@@ -83,6 +87,7 @@ class Asterix048Report final : public AsterixMessage {
         TYP_T typ{TYP_T::NO_DETECTION};
 
         bool spi{false};
+        bool me{false};
 
 // --- Target Report Descriptor setter
         void setTYP(int _typ) {
@@ -93,7 +98,6 @@ class Asterix048Report final : public AsterixMessage {
             spi = _spi;
         }
 
-
 // --- Mode-3/A Code in Octal Representation setter
         void setMode3A(uint16_t code, bool v, bool g, bool l) {
             mode3A = {code, v, g, l};
@@ -101,9 +105,41 @@ class Asterix048Report final : public AsterixMessage {
         }
 
 // --- Mode-C Code in Binary Representation setter
-        void setSSRHeight(double height, bool v, bool g) {
-            ssrHeight = {height, v, g};
-            presenceMask |= HAS_HEIGHT;
+        void setSSRHeight(int16_t height, bool v, bool g) {
+            // The resolution is 25 feet. The scale factor converts
+            // the signed 16-bit value (interpreted as a flight level) to meters.
+            constexpr double HEIGHT_SCALE = 25.0 * 0.3048;
+
+            ssrHeight = {height * HEIGHT_SCALE, v, g};
+            presenceMask |= HAS_SSR_HEIGHT;
+        }
+
+// --- 3D Height
+        void setSRHeight(int16_t height) {
+            // The resolution is 25 feet. The scale factor converts
+            // the signed 16-bit value (interpreted as a flight level) to meters.
+            constexpr double HEIGHT_SCALE = 25.0 * 0.3048;
+
+            srHeight = height * HEIGHT_SCALE;
+            presenceMask |= HAS_SR_HEIGHT;
+        }
+
+// --- MeasuredCoordinate
+        void setMeasuredCoordinates(uint16_t rawRange, uint16_t rawAzimuth) {
+            // Range: LSB = 1/256 NM converted to meters
+            // 1852.0 is the standard Nautical Mile to Meters conversion
+            range = (static_cast<double>(rawRange) / 256.0) * 1852.0;
+
+            // Azimuth: LSB = (pi/4) / 8192 radians
+            // Which is 2*PI / 65536
+            constexpr double AZIMUTH_SCALE = 0.00009587379; // (M_PI / 32768.0)
+            azimuth = static_cast<double>(rawAzimuth) * AZIMUTH_SCALE;
+
+            presenceMask |= HAS_MEASUR_COORD;
+        }
+
+        void setME(bool _me) {
+            me = _me;
         }
 };
 
