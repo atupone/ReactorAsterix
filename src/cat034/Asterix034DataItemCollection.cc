@@ -18,9 +18,6 @@
 // Interface
 #include <ReactorAsterix/cat034/Asterix034DataItemCollection.h>
 
-// System headers
-#include <cassert>
-
 // Library headers
 #include <ReactorAsterix/core/EndianUtils.h>
 #include <ReactorAsterix/cat034/Asterix034Report.h>
@@ -35,29 +32,19 @@ namespace ReactorAsterix {
  *
  * The first byte is the SAC, and the second byte is the SIC.
  *
- * @param report The target `Asterix034Report` object.
  * @param data The raw data buffer for this item (2 bytes).
  */
-void I034_010_Handler::decode(Asterix034Report& report, std::string_view data) const {
-    if (data.size() < fixedSize) [[unlikely]] {
-        return;
-    }
-
-    uint8_t sac = static_cast<uint8_t>(data[0]);
-    uint8_t sic = static_cast<uint8_t>(data[1]);
-    report.setSourceIdentifier(sac, sic);
+void I034_010_Handler::decode(std::string_view data) {
+    sac = static_cast<uint8_t>(data[0]);
+    sic = static_cast<uint8_t>(data[1]);
 }
 
 /**
  * @brief Decodes the 1-byte Message Type (I034/000).
  * 1 = North Marker, 2 = Sector Message
  */
-void I034_000_Handler::decode(Asterix034Report& context, std::string_view data) const {
-    if (data.size() < fixedSize) [[unlikely]] {
-        return;
-    }
-
-    context.setMessageType(static_cast<uint8_t>(data[0]));
+void I034_000_Handler::decode(std::string_view data) {
+    messageType = static_cast<MESSAGE_TYPE_T>(data[0]);
 }
 
 /**
@@ -65,50 +52,36 @@ void I034_000_Handler::decode(Asterix034Report& context, std::string_view data) 
  * The TOD value is constructed from the three bytes, where the unit is in
  * 1/128 seconds.
  *
- * @param context The target context object (Asterix034Report) to store the result.
  * @param data The raw data buffer containing the 3 bytes of TOD.
  */
-void I034_030_Handler::decode(Asterix034Report& context, std::string_view data) const {
-    if (data.size() < fixedSize) [[unlikely]] {
-        return;
-    }
+void I034_030_Handler::decode(std::string_view data) {
+    // Use a pointer to unsigned to avoid messy casting
+    auto* udata = reinterpret_cast<const uint8_t*>(data.data());
 
-    context.TOD = decodeBigEndian<uint32_t>(data.substr(0, 3));
+    TOD =
+        (static_cast<uint32_t>(udata[0]) << 16) |
+        (static_cast<uint32_t>(udata[1]) << 8)  |
+        (static_cast<uint32_t>(udata[2]));
 }
 
-void I034_020_Handler::decode(Asterix034Report& context, std::string_view data) const {
-    if (data.size() < fixedSize) [[unlikely]] {
-        return;
-    }
-
-    context.sectorNumber = static_cast<uint8_t>(data[0]);
+void I034_020_Handler::decode(std::string_view data) {
+    sectorNumber = static_cast<uint8_t>(data[0]);
 }
 
-void I034_041_Handler::decode(Asterix034Report& context, std::string_view data) const {
-    if (data.size() < fixedSize) [[unlikely]] return;
-
+void I034_041_Handler::decode(std::string_view data) {
     // LSB = 1/128 second
-    uint16_t periodRaw = decodeBigEndian<uint16_t>(data);
-    if (periodRaw > 0) {
-        // Convert period to RPM: (60 sec) / (periodRaw / 128.0)
-        context.setAntennaSpeed(7680.0f / static_cast<float>(periodRaw));
-    }
+    speed = decodeBigEndian<uint16_t>(data);
 }
 
-void I034_120_Handler::decode(Asterix034Report& context, std::string_view data) const {
-    if (data.size() < fixedSize) [[unlikely]] {
-        return;
-    }
-
+void I034_120_Handler::decode(std::string_view data) {
     // Height: 16-bit unsigned, LSB = 1 meter
-    context.height = (static_cast<uint8_t>(data[0]) << 8) | static_cast<uint8_t>(data[1]);
+    height = (static_cast<uint8_t>(data[0]) << 8) | static_cast<uint8_t>(data[1]);
 
     // Latitude (Bytes 3-5): 3-byte signed, LSB = 180/2^23 degrees
-    constexpr double scaling = 180.0 / 8388608.0; 
-    context.latitude = decode24BitSigned(data.substr(2, 3)) * scaling;
+    latitude = decode24BitSigned(data.substr(2, 3));
 
     // Longitude (Bytes 6-8): 3-byte signed
-    context.longitude = decode24BitSigned(data.substr(5, 3)) * scaling;
+    longitude = decode24BitSigned(data.substr(5, 3));
 }
 
 } // namespace ReactorAsterix

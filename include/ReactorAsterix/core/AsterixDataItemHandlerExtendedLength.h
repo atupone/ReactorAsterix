@@ -30,8 +30,7 @@ namespace ReactorAsterix {
  * @brief Helper template for ASTERIX data items that have a variable length
  * determined by an extension bit (FX) in the Least Significant Bit (LSB).
  */
-template <typename T>
-class AsterixDataItemHandlerExtendedLength : public AsterixDataItemHandlerBase<T> {
+class AsterixDataItemHandlerExtendedLength : public AsterixDataItemHandlerBase {
     public:
         /**
          * @brief Constructor
@@ -46,30 +45,27 @@ class AsterixDataItemHandlerExtendedLength : public AsterixDataItemHandlerBase<T
          * @brief Calculates the total size by scanning for the FX bit (LSB).
          * Matches the signature in IAsterixDataItemHandler.h.
          */
-        size_t getSize(std::string_view data) const final;
+        inline size_t getSize(std::string_view data) const final {
+            // k is the initial length (e.g., 1 byte)
+            size_t currentPos = k - 1;
+
+            // The item has variable length. The loop continues as long as the FX bit (LSB) is set.
+            while (currentPos < data.size()) {
+                const uint8_t byte = static_cast<uint8_t>(data[currentPos]);
+                if (!(byte & 0x01)) break; // FX bit not set, we are at the end
+                currentPos += i;
+            }
+
+            size_t totalSize = currentPos + 1;
+
+            // Safety check: if the loop finished because we ran out of data
+            // rather than finding a 0 FX bit, the packet is malformed.
+            return (totalSize <= data.size()) ? totalSize : 0;
+        }
 
     protected:
         uint8_t k, i;
 };
-
-template <typename T>
-size_t AsterixDataItemHandlerExtendedLength<T>::getSize(std::string_view data) const {
-    // k is the initial length (e.g., 1 byte)
-    size_t currentPos = k - 1;
-
-    // The item has variable length. The loop continues as long as the FX bit (LSB) is set.
-    while (currentPos < data.size()) {
-        const uint8_t byte = static_cast<uint8_t>(data[currentPos]);
-        if (!(byte & 0x01)) break; // FX bit not set, we are at the end
-        currentPos += i;
-    }
-
-    size_t totalSize = currentPos + 1;
-
-    // Safety check: if the loop finished because we ran out of data
-    // rather than finding a 0 FX bit, the packet is malformed.
-    return (totalSize <= data.size()) ? totalSize : 0;
-}
 
 } // namespace ReactorAsterix
 

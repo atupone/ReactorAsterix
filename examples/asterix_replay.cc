@@ -26,8 +26,8 @@
 #include <ReactorAsterix/core/SourceStateManager.h>
 
 // Category Handlers
-#include <ReactorAsterix/cat001/Asterix1Handler.h>
-#include <ReactorAsterix/cat002/Asterix2Handler.h>
+#include <ReactorAsterix/cat001/Asterix001Handler.h>
+#include <ReactorAsterix/cat002/Asterix002Handler.h>
 #include <ReactorAsterix/cat034/Asterix034Handler.h>
 #include <ReactorAsterix/cat048/Asterix048Handler.h>
 
@@ -88,10 +88,10 @@ int main(int argc, char** argv) {
 
     // 2. Register all Category Handlers
     // Category 001: Target Reports
-    asterixHandler.registerCategoryHandler(1, std::make_unique<Asterix1Handler>(state));
+    asterixHandler.registerCategoryHandler(1, std::make_unique<Asterix001Handler>(state));
 
     // Category 002: Service Messages
-    asterixHandler.registerCategoryHandler(2, std::make_unique<Asterix2Handler>(state));
+    asterixHandler.registerCategoryHandler(2, std::make_unique<Asterix002Handler>(state));
 
     // Category 034: Monoradar Service Messages
     asterixHandler.registerCategoryHandler(34, std::make_unique<Asterix034Handler>(state));

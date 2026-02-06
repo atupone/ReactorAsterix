@@ -65,6 +65,7 @@ set(LIB_HEADERS
     include/ReactorAsterix/core/AsterixDataItemHandlerExtendedLength.h
     include/ReactorAsterix/core/AsterixDataItemHandlerFixedLength.h
     include/ReactorAsterix/core/AsterixDataItemHandlerRepetitive.h
+    include/ReactorAsterix/core/AsterixDecoderUtils.h
     include/ReactorAsterix/core/AsterixDiagnostics.h
     include/ReactorAsterix/core/AsterixMessage.h
     include/ReactorAsterix/core/AsterixPacketHandler.h
@@ -72,14 +73,14 @@ set(LIB_HEADERS
     include/ReactorAsterix/core/IAsterixDataItemHandler.h
     include/ReactorAsterix/core/SourceIdentifier.h
     include/ReactorAsterix/core/SourceStateManager.h
-    include/ReactorAsterix/cat001/Asterix1DataItemCollection.h
-    include/ReactorAsterix/cat001/Asterix1Handler.h
-    include/ReactorAsterix/cat001/Asterix1Report.h
-    include/ReactorAsterix/cat001/IAsterix1Listener.h
-    include/ReactorAsterix/cat002/Asterix2DataItemCollection.h
-    include/ReactorAsterix/cat002/Asterix2Handler.h
-    include/ReactorAsterix/cat002/Asterix2Report.h
-    include/ReactorAsterix/cat002/IAsterix2Listener.h
+    include/ReactorAsterix/cat001/Asterix001DataItemCollection.h
+    include/ReactorAsterix/cat001/Asterix001Handler.h
+    include/ReactorAsterix/cat001/Asterix001Report.h
+    include/ReactorAsterix/cat001/IAsterix001Listener.h
+    include/ReactorAsterix/cat002/Asterix002DataItemCollection.h
+    include/ReactorAsterix/cat002/Asterix002Handler.h
+    include/ReactorAsterix/cat002/Asterix002Report.h
+    include/ReactorAsterix/cat002/IAsterix002Listener.h
     include/ReactorAsterix/cat034/Asterix034Report.h
     include/ReactorAsterix/cat034/IAsterix034Listener.h
     include/ReactorAsterix/cat034/Asterix034DataItemCollection.h
@@ -92,14 +93,18 @@ set(LIB_HEADERS
 
 set(LIB_SOURCES
     src/core/AsterixPacketHandler.cc
-    src/cat001/Asterix1DataItemCollection.cc
-    src/cat001/Asterix1Handler.cc
-    src/cat002/Asterix2DataItemCollection.cc
-    src/cat002/Asterix2Handler.cc
+    src/cat001/Asterix001DataItemCollection.cc
+    src/cat001/Asterix001Handler.cc
+    src/cat001/Asterix001Report.cc
+    src/cat002/Asterix002DataItemCollection.cc
+    src/cat002/Asterix002Handler.cc
+    src/cat002/Asterix002Report.cc
     src/cat034/Asterix034DataItemCollection.cc
     src/cat034/Asterix034Handler.cc
+    src/cat034/Asterix034Report.cc
     src/cat048/Asterix048DataItemCollection.cc
     src/cat048/Asterix048Handler.cc
+    src/cat048/Asterix048Report.cc
 )
 
 # Create the SHARED library

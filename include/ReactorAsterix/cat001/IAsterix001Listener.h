@@ -19,21 +19,21 @@
 
 namespace ReactorAsterix {
 
-class Asterix1Report;
+class Asterix001Report;
 
 /**
  * @class IAsterix1Listener
  * @brief High-performance interface for receiving decoded Category 1 reports.
  */
-class IAsterix1Listener {
+class IAsterix001Listener {
     public:
-        virtual ~IAsterix1Listener() = default;
+        virtual ~IAsterix001Listener() = default;
 
         /**
          * @brief Called by the handler when a record is successfully decoded.
          * Uses a virtual call which is faster than std::function for shared libraries.
          */
-        virtual void onReportDecoded(const Asterix1Report& report) = 0;
+        virtual void onReportDecoded(const Asterix001Report& report) = 0;
 };
 
 } // namespace ReactorAsterix

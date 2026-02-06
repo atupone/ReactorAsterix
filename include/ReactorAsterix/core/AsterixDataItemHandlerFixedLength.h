@@ -26,8 +26,7 @@ namespace ReactorAsterix {
  * @class AsterixDataItemHandlerFixedLength
  * @brief Helper for items with a constant, pre-defined byte length.
  */
-template <typename T>
-class AsterixDataItemHandlerFixedLength : public AsterixDataItemHandlerBase<T> {
+class AsterixDataItemHandlerFixedLength : public AsterixDataItemHandlerBase {
     public:
         /**
          * @brief Constructor.

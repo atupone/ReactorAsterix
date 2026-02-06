@@ -44,6 +44,7 @@ class Asterix048Handler final
             I048_040_Handler,
             I048_070_Handler,
             I048_090_Handler,
+            I048_130_Handler,
             I048_220_Handler,
             I048_240_Handler,
             I048_250_Handler,
@@ -51,11 +52,18 @@ class Asterix048Handler final
             I048_042_Handler,
             I048_200_Handler,
             I048_170_Handler,
+            I048_210_Handler,
+            I048_030_Handler,
+            I048_080_Handler,
             I048_100_Handler,
             I048_110_Handler,
+            I048_120_Handler,
             I048_230_Handler,
+            I048_260_Handler,
             I048_055_Handler,
-            I048_050_Handler
+            I048_050_Handler,
+            I048_065_Handler,
+            I048_060_Handler
         >;
 
         static constexpr uint8_t Category = 48;
@@ -76,14 +84,6 @@ class Asterix048Handler final
     protected:
         // Implementation of the Hook: Time Synchronization Logic
         bool onAfterDecode(Asterix048Report& report, struct timespec ts);
-
-
-        /**
-         * @brief This is the "Hot Path".
-         * Because we call methods on named members, the compiler
-         * will likely INLINE these calls.
-         */
-        bool dispatch(int frn, Asterix048Report& report, std::string_view& data);
 
         // Supports multiple sinks (Logger, Tracker, Display)
         std::vector<std::weak_ptr<IAsterix048Listener>> listeners;

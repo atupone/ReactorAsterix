@@ -24,8 +24,6 @@
 
 namespace ReactorAsterix {
 
-    struct AsterixStats; // Forward declaration for diagnostic support
-
 /**
  * @class IAsterixDataItemHandler
  * @brief An interface for classes that handle the decoding of a single ASTERIX
@@ -39,20 +37,12 @@ namespace ReactorAsterix {
  * @tparam T The type of the context object (e.g., Asterix1Report) that will
  * receive the decoded information.
  */
-template <typename T>
 class IAsterixDataItemHandler {
     public:
         /**
          * @brief Virtual destructor to ensure proper cleanup of derived classes.
          */
         virtual ~IAsterixDataItemHandler() = default;
-
-        /**
-         * @brief Links the central statistics to this handler.
-         * * This allows individual item decoders to report errors or
-         * unimplemented features to the global stats object.
-         */
-        virtual void setStats(AsterixStats& s) = 0; // Added for diagnostic tracking
 
         /**
          * @brief Decodes the ASTERIX data item.
@@ -65,7 +55,7 @@ class IAsterixDataItemHandler {
          * where the decoded information will be stored.
          * @param data A pointer to the start of the data item.
          */
-        virtual void decode(T& context, std::string_view data) const = 0;
+        virtual void decode(std::string_view data) = 0;
 
         /**
          * @brief Returns the size of the data item in bytes.

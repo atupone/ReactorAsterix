@@ -21,43 +21,70 @@
 #include <ReactorAsterix/core/AsterixMessage.h>
 
 // System headers
-#include <cstdint>
-#include <cmath>
+#include <string_view>
+
+// Library headers
+#include <ReactorAsterix/core/AsterixDiagnostics.h>
+#include <ReactorAsterix/cat034/Asterix034DataItemCollection.h>
 
 namespace ReactorAsterix {
 
 /**
  * @class Asterix034Report
  * @brief Container for decoded Category 034 data.
- * The client is responsible for converting these values into physical coordinates.
  */
-class Asterix034Report : public AsterixMessage {
+class Asterix034Report final : public AsterixMessage {
     public:
-        Asterix034Report() : antennaSpeed(0.0f), sectorNumber(0), height(0) {};
+        Asterix034Report() = default;
         ~Asterix034Report() override = default;
 
-        // Setters for the handlers to use
-        void setMessageType(uint8_t type) { messageType = static_cast<MessageType>(type); }
-        void setAntennaSpeed(float speed) { antennaSpeed = speed; };
+        /**
+         * Decodes Cat 034 fields using the recursive template schema.
+         */
+        bool process_all_octets(
+            std::string_view fspec,
+            std::string_view& data,
+            AsterixStats& stats);
 
-        enum class MessageType : uint8_t {
-            NORTH_MARKER = 1,
-            SECTOR_CROSSING = 2,
-            GEOGRAPHICAL_FILTER = 3,
-            JAMMING_STROBE = 4,
-            SOLAR_STORM = 5,
-            SSR_JAMMING_STROBE = 6,
-            MODE_S_JAMMING_STROBE = 7
-        };
+        // --- Data Items (Standard Cat 034 v1.27) ---
 
-        double latitude{0.0};  // WGS-84 Decimal Degrees
-        double longitude{0.0}; // WGS-84 Decimal Degrees
+        // FSPEC Octet 1
+        bool i034_010_presence{false};
+        I034_010_Handler i034_010; // Data Source Identifier
 
-        float antennaSpeed{0.0f};
+        bool i034_000_presence{false};
+        I034_000_Handler i034_000; // Message Type
 
-        uint8_t sectorNumber;
-        uint16_t height;       // LSB = 1 m
-        MessageType messageType{MessageType::NORTH_MARKER};
+        bool i034_030_presence{false};
+        I034_030_Handler i034_030; // Time of Message
+
+        bool i034_020_presence{false};
+        I034_020_Handler i034_020; // Sector Number
+
+        bool i034_041_presence{false};
+        I034_041_Handler i034_041; // Antenna Rotation Period
+
+        bool i034_050_presence{false};
+        I034_050_Handler i034_050; // System Configuration/Status
+
+        bool i034_060_presence{false};
+        I034_060_Handler i034_060; // System Processing Parameters
+
+        // FSPEC Octet 2
+        bool i034_070_presence{false};
+        I034_070_Handler i034_070; // Plot Count Values
+
+        bool i034_100_presence{false};
+        I034_100_Handler i034_100; // Generic Polar Window
+
+        bool i034_110_presence{false};
+        I034_110_Handler i034_110; // Data Filter
+
+        bool i034_120_presence{false};
+        I034_120_Handler i034_120; // 3D Radar Position
+
+        bool i034_090_presence{false};
+        I034_090_Handler i034_090; // Collimation Error
 };
 
 } // namespace ReactorAsterix

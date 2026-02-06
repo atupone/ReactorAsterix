@@ -22,6 +22,12 @@
 
 // System headers
 #include <cstdint>
+#include <string_view>
+
+// Library headers
+#include <ReactorAsterix/core/AsterixDiagnostics.h>
+#include <ReactorAsterix/core/FastBitReader.h>
+#include <ReactorAsterix/cat048/Asterix048DataItemCollection.h>
 
 namespace ReactorAsterix {
 
@@ -32,116 +38,95 @@ namespace ReactorAsterix {
  */
 class Asterix048Report final : public AsterixMessage {
     public:
-        Asterix048Report() = default;
-        ~Asterix048Report() override = default;
+       Asterix048Report() = default;
+       ~Asterix048Report() override = default;
 
-        enum Presence : uint16_t {
-            HAS_MODE_3A      = 1 << 0,
-            HAS_SR_HEIGHT    = 1 << 1,
-            HAS_SSR_HEIGHT   = 1 << 2,
-            HAS_MEASUR_COORD = 1 << 3,
-        };
+       bool process_all_octets(
+               std::string_view fspec, std::string_view& data,
+               AsterixStats& stats);
 
-        uint16_t presenceMask = 0;
+       // --- FSPEC Octet 1 ---
+       bool i048_010_presence{false};
+       I048_010_Handler i048_010;
 
-// --- Target Report Descriptor bits
-        // Enumeration for TYP
-        enum class TYP_T : uint8_t {
-            NO_DETECTION = 0,
-            SINGLE_PSR_DETECTION   = 1,
-            SINGLE_SSR_DETECTION   = 2,
-            SSR_PSR_DETECTION      = 3,
-            SINGLE_MODES_ALL_CALL  = 4,
-            SINGLE_MODES_ROLL_CALL = 5,
-            MODES_ALL_CALL_PSR     = 6,
-            MODES_ROLL_CALL_PSR    = 7
-        };
+       bool i048_140_presence{false};
+       I048_140_Handler i048_140;
 
+       bool i048_020_presence{false};
+       I048_020_Handler i048_020;
 
-// ---  Measured Position in Polar Coordinates
-        // Physical Data (converted from raw bits)
-        double range{0.0};   // Meters
-        double azimuth{0.0}; // Radians
+       bool i048_040_presence{false};
+       I048_040_Handler i048_040;
 
-        // SSR / Mode Data
-        struct {
-            uint16_t code;
-            bool validated : 1;
-            bool garbled   : 1;
-            bool local     : 1;;
-        } mode3A;
+       bool i048_070_presence{false};
+       I048_070_Handler i048_070;
 
-// ---  Flight Level in Binary Representation
-        struct {
-            double height; // meters
-            bool validated : 1;
-            bool garbled   : 1;
-        } ssrHeight;
+       bool i048_090_presence{false};
+       I048_090_Handler i048_090;
 
-        double srHeight{0.0};
+       bool i048_130_presence{false};
+       I048_130_Handler i048_130;
 
-        // Check: if (report.has(Asterix1Report::HAS_MODE_3A)) ...
-        bool has(Presence p) const { return presenceMask & p; }
+       // --- FSPEC Octet 2 ---
+       bool i048_220_presence{false};
+       I048_220_Handler i048_220;
 
+       bool i048_240_presence{false};
+       I048_240_Handler i048_240;
 
-        TYP_T typ{TYP_T::NO_DETECTION};
+       bool i048_250_presence{false};
+       I048_250_Handler i048_250;
 
-        bool spi{false};
-        bool me{false};
+       bool i048_161_presence{false};
+       I048_161_Handler i048_161;
 
-// --- Target Report Descriptor setter
-        void setTYP(int _typ) {
-            typ = static_cast<TYP_T>(_typ);
-        }
+       bool i048_042_presence{false};
+       I048_042_Handler i048_042;
 
-        void setSPI(bool _spi) {
-            spi = _spi;
-        }
+       bool i048_200_presence{false};
+       I048_200_Handler i048_200;
 
-// --- Mode-3/A Code in Octal Representation setter
-        void setMode3A(uint16_t code, bool v, bool g, bool l) {
-            mode3A = {code, v, g, l};
-            presenceMask |= HAS_MODE_3A;
-        }
+       bool i048_170_presence{false};
+       I048_170_Handler i048_170;
 
-// --- Mode-C Code in Binary Representation setter
-        void setSSRHeight(int16_t height, bool v, bool g) {
-            // The resolution is 25 feet. The scale factor converts
-            // the signed 16-bit value (interpreted as a flight level) to meters.
-            constexpr double HEIGHT_SCALE = 25.0 * 0.3048;
+       // --- FSPEC Octet 3 ---
+       bool i048_210_presence{false};
+       I048_210_Handler i048_210;
 
-            ssrHeight = {height * HEIGHT_SCALE, v, g};
-            presenceMask |= HAS_SSR_HEIGHT;
-        }
+       bool i048_030_presence{false};
+       I048_030_Handler i048_030;
 
-// --- 3D Height
-        void setSRHeight(int16_t height) {
-            // The resolution is 25 feet. The scale factor converts
-            // the signed 16-bit value (interpreted as a flight level) to meters.
-            constexpr double HEIGHT_SCALE = 25.0 * 0.3048;
+       bool i048_080_presence{false};
+       I048_080_Handler i048_080;
 
-            srHeight = height * HEIGHT_SCALE;
-            presenceMask |= HAS_SR_HEIGHT;
-        }
+       bool i048_100_presence{false};
+       I048_100_Handler i048_100;
 
-// --- MeasuredCoordinate
-        void setMeasuredCoordinates(uint16_t rawRange, uint16_t rawAzimuth) {
-            // Range: LSB = 1/256 NM converted to meters
-            // 1852.0 is the standard Nautical Mile to Meters conversion
-            range = (static_cast<double>(rawRange) / 256.0) * 1852.0;
+       bool i048_110_presence{false};
+       I048_110_Handler i048_110;
 
-            // Azimuth: LSB = (pi/4) / 8192 radians
-            // Which is 2*PI / 65536
-            constexpr double AZIMUTH_SCALE = 0.00009587379; // (M_PI / 32768.0)
-            azimuth = static_cast<double>(rawAzimuth) * AZIMUTH_SCALE;
+       bool i048_120_presence{false};
+       I048_120_Handler i048_120;
 
-            presenceMask |= HAS_MEASUR_COORD;
-        }
+       bool i048_230_presence{false};
+       I048_230_Handler i048_230;
 
-        void setME(bool _me) {
-            me = _me;
-        }
-};
+       // --- FSPEC Octet 4 ---
+       bool i048_260_presence{false};
+       I048_260_Handler i048_260;
+
+       bool i048_055_presence{false};
+       I048_055_Handler i048_055;
+
+       bool i048_050_presence{false};
+       I048_050_Handler i048_050;
+
+       bool i048_065_presence{false};
+       I048_065_Handler i048_065;
+
+       bool i048_060_presence{false};
+       I048_060_Handler i048_060;
+    };
 
 } // namespace ReactorAsterix
 

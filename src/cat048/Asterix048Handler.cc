@@ -24,34 +24,22 @@ Asterix048Handler::Asterix048Handler(std::shared_ptr<SourceStateManager> manager
     : AsterixCategoryHandler(std::move(manager)) {}
 
 void Asterix048Handler::setStats(AsterixStats& s) {
-    // 2. Propagate the reference to every handler in your compile-time tuple
-    std::apply([&s](auto&&... handler) {
-        (handler.setStats(s), ...);
-    }, m_handlers);
     stats_ptr = &s;
-}
-
-bool Asterix048Handler::dispatch(int frn, Asterix048Report& report, std::string_view& data) {
-    // Calls the template version in the base class
-    return AsterixCategoryHandler::dispatch(frn, report, data, m_handlers);
 }
 
 bool Asterix048Handler::onAfterDecode(Asterix048Report& report, struct timespec /*ts*/)
 {
+    uint32_t TOD = report.i048_140.TOD;
+
+    // ALWAYS update the Radar's 24h clock state (for bit-stitching ref)
+    report.sourceRecord->lastTod = TOD;
+
     if (!report.sourceRecord->isSynchronized.load(std::memory_order_acquire)) [[unlikely]] {
         return false;
     }
 
-    uint32_t TOD = report.TOD;
-
-    // UPDATE MANAGER FIRST (Using raw Radar TOD)
-    // ALWAYS update the Radar's 24h clock state (for bit-stitching ref)
-    // Update persistent raw time
-    report.sourceRecord->lastTod = TOD;
-
     // APPLY OFFSET FOR LISTENERS (Transition to System Domain)
     // Now we shift the report's TOD to match our local Linux clock
-    // Get the average offset directly from the record (No lookup needed!)
     int32_t corrected = static_cast<int32_t>(TOD) -
         report.sourceRecord->averageOffset;
 

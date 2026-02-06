@@ -35,53 +35,6 @@
 
 namespace ReactorAsterix {
 
-// -----------------------------------------------------------------------
-// Helper: Linear search using C++17 Fold Expression
-// This avoids recursive template instantiation limits and errors.
-// -----------------------------------------------------------------------
-template <typename Tuple, uint8_t TargetFRN, size_t... Is>
-    constexpr int findHandlerIndexImpl(std::index_sequence<Is...>) {
-        int found = -1;
-        // Unfold checks across all tuple elements
-        ( ( (std::tuple_element_t<Is, Tuple>::FRN == TargetFRN) ? (found = static_cast<int>(Is)) : 0 ), ... );
-        return found;
-    }
-
-// -----------------------------------------------------------------------
-// Replacement HandlerIndexFinder
-// Keeps your existing API (::value) but uses the robust implementation.
-// -----------------------------------------------------------------------
-template <typename Tuple, uint8_t TargetFRN>
-struct HandlerIndexFinder {
-    static constexpr int value = findHandlerIndexImpl<Tuple, TargetFRN>(
-        std::make_index_sequence<std::tuple_size_v<Tuple>>{}
-    );
-};
-
-/**
- * @brief Helper to handle the "Boilerplate" of getting size and decoding.
- * Making this a template ensures the compiler knows the EXACT type of 'H' and 'R'.
- */
-template<typename H, typename R>
-    bool execute(H& handler, R& report, std::string_view& data) {
-        // Determine item size and check buffer bounds.
-        auto itemSize = handler.getSize(data);
-        if (itemSize > data.size()) [[unlikely]] {
-            // Not enough data was found in the payload for this item.
-            return false;
-        }
-
-        // Decode the data into the context object and advance pointers.
-        handler.decode(report, data.substr(0, itemSize));
-
-        data.remove_prefix(itemSize);
-        return true;
-    }
-
-// Define a trait to check mandatory status at compile time
-template<typename T>
-struct is_mandatory { static constexpr bool value = false; };
-
 template <typename Tuple>
 struct FspecBuilder;
 
@@ -120,15 +73,6 @@ struct FspecBuilder<std::tuple<Handlers...>> {
             mask[byteIndex] |= static_cast<uint8_t>(1 << bitIndex);
         }
 };
-
-template<typename... Handlers>
-constexpr std::array<uint8_t, 20> buildMandatoryFspec() {
-    std::array<uint8_t, 20> fspec{};
-    // Only set bit if Handler::is_mandatory is true
-    ((Handlers::is_mandatory ?
-      (fspec[(Handlers::FRN - 1) / 7] |= (1 << (7 - ((Handlers::FRN - 1) % 7)))) : 0), ...);
-    return fspec;
-}
 
 /**
  * @class AsterixCategoryHandler
@@ -214,14 +158,11 @@ class AsterixCategoryHandler : public IAsterixCategoryHandler {
 
             std::string_view data = payload;
 
-            // Execute the unrolled decoding
-            // Note: we pass the m_handlers from the Derived class
-            process_all_octets_unrolled(
-                fspec,
-                data,
-                static_cast<Derived*>(this)->m_handlers,
-                report,
-                *stats_ptr);
+            bool result = report.process_all_octets(fspec, data, *stats_ptr);
+
+            if (!result) [[unlikely]] {
+                return 0;
+            }
 
             size_t consumed = payload.size() - data.size();
 
@@ -300,94 +241,6 @@ class AsterixCategoryHandler : public IAsterixCategoryHandler {
             }
             return true;
         }
-
-        template<size_t StartFRN, size_t... Is, typename HandlerTuple, typename Report>
-        static bool unroll_octet_impl(uint8_t octet, std::index_sequence<Is...>, HandlerTuple& handlers,
-                Report& report, std::string_view& data, AsterixStats& stats) {
-            bool success = true;
-
-            // Fold expression: iterates over the pack 0, 1, 2, 3, 4, 5, 6
-            ([&] {
-                if (!success) return; // Already failed, skip this bit
-
-                constexpr size_t CurrentFRN = StartFRN + Is;
-
-                // Check if the bit for this FRN is set (Bit 7 down to Bit 1)
-                if (octet & (0x80 >> Is)) {
-                    // Find the index in your handlers tuple
-                    constexpr int TupleIdx = HandlerIndexFinder<HandlerTuple,
-                                                                static_cast<unsigned char>(CurrentFRN)>::value;
-
-                    if constexpr (TupleIdx != -1) {
-                        // Call your 'execute' helper!
-                        // This does the getSize check, decode, and remove_prefix.
-                        if (!execute(std::get<TupleIdx>(handlers), report, data)) {
-                            stats.malformedRecords.fetch_add(1, std::memory_order_relaxed);
-                            success = false; // Set failure flag
-                        }
-                    }
-                }
-             }(), ...);
-
-            return success;
-        }
-
-        template<size_t StartFRN, typename HandlerTuple, typename Report>
-        static bool unroll_octet(uint8_t octet, HandlerTuple& handlers,
-                Report& report, std::string_view& data, AsterixStats& stats) {
-            return unroll_octet_impl<StartFRN>(
-                    octet, std::make_index_sequence<7>{}, handlers, report, data, stats);
-        }
-
-        template <size_t Threshold, typename Tuple, size_t... Is>
-        static constexpr bool HasHandlersBeyondHelper(std::index_sequence<Is...>) {
-            return ((std::tuple_element_t<Is, Tuple>::FRN > Threshold) || ...);
-        }
-
-        template <size_t Threshold, typename Tuple>
-        static constexpr bool HasHandlersBeyond() {
-            return HasHandlersBeyondHelper<Threshold, Tuple>(
-                std::make_index_sequence<std::tuple_size_v<Tuple>>{}
-            );
-        }
-
-        // Main entry point for the unrolled decoding logic
-        template <size_t OctetIdx = 0, typename HandlerTuple, typename Report>
-        static bool process_all_octets_unrolled(std::string_view fspec, std::string_view& data,
-                HandlerTuple& handlers, Report& report, AsterixStats& stats) {
-            // Runtime safety: Don't read past the actual F-Spec received
-            if (OctetIdx >= fspec.size()) return true;
-
-            uint8_t octet = static_cast<uint8_t>(fspec[OctetIdx]);
-
-            // Calculate which FRN this octet starts with
-            constexpr size_t StartFRN = (OctetIdx * 7) + 1;
-
-            // We ALWAYS unroll 7 bits because any of them could match a handler in the sparse tuple
-            if (!unroll_octet<StartFRN>(octet, handlers, report, data, stats)) {
-                return false;
-            }
-
-            // Recursion logic:
-            // We only stop recursing if we are sure NO handler in the tuple
-            // has an FRN higher than what we just processed.
-            if constexpr (HasHandlersBeyond<StartFRN + 6, HandlerTuple>()) {
-                if (octet & 0x01) {
-                    return process_all_octets_unrolled<OctetIdx + 1>(fspec, data, handlers, report, stats);
-                }
-            }
-
-            return true;
-        }
-
-        template <typename ReportType, typename HandlersTuple>
-            bool dispatch(int frn, ReportType& report, std::string_view& data, HandlersTuple& handlers) {
-                return std::apply([&](auto&... h) {
-                    // Fold expression: ((condition ? execute(...) : false) || ...)
-                    // Expands at compile time to a sequence of checks.
-                    return ((h.FRN == frn ? execute(h, report, data) : false) || ...);
-                }, handlers);
-            }
 
         /**
          * @brief Pointer to central diagnostic stats.

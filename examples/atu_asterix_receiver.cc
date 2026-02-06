@@ -6,18 +6,18 @@
 #include <atu_reactor/Types.h>
 
 #include "ReactorAsterix/core/AsterixPacketHandler.h"
-#include "ReactorAsterix/cat001/Asterix1Handler.h"
-#include "ReactorAsterix/cat001/IAsterix1Listener.h"
+#include "ReactorAsterix/cat001/Asterix001Handler.h"
+#include "ReactorAsterix/cat001/IAsterix001Listener.h"
 #include "ReactorAsterix/core/SourceStateManager.h"
 
 using namespace ReactorAsterix;
 using namespace atu_reactor;
 
 // A simple printer for decoded radar reports
-class AsterixPrinter : public IAsterix1Listener {
+class AsterixPrinter : public IAsterix001Listener {
 public:
-    void onReportDecoded(const Asterix1Report& report) override {
-        std::cout << "[CAT001] Decoded - Range: " << report.range << "m" << std::endl;
+    void onReportDecoded(const Asterix001Report& report) override {
+        std::cout << "[CAT001] Decoded - Range: " << report.i001_040.range << "m" << std::endl;
     }
 };
 
@@ -38,7 +38,7 @@ int main() {
     auto stateManager = std::make_shared<SourceStateManager>();
     AsterixPacketHandler packetHandler;
     
-    auto cat1 = std::make_unique<Asterix1Handler>(stateManager);
+    auto cat1 = std::make_unique<Asterix001Handler>(stateManager);
     auto printer = std::make_shared<AsterixPrinter>();
     cat1->addListener(printer);
     packetHandler.registerCategoryHandler(1, std::move(cat1));

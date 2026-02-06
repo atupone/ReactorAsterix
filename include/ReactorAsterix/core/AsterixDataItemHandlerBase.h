@@ -36,8 +36,7 @@ namespace ReactorAsterix {
  * with a do-nothing implementation for data items that are not meant to be decoded
  * but still need to be handled for size determination (e.g., reserved items).
  */
-template <typename T>
-class AsterixDataItemHandlerBase : public IAsterixDataItemHandler<T> {
+class AsterixDataItemHandlerBase : public IAsterixDataItemHandler {
     public:
         AsterixDataItemHandlerBase() : name("Unknown Item") {};
         virtual ~AsterixDataItemHandlerBase() = default;
@@ -46,7 +45,7 @@ class AsterixDataItemHandlerBase : public IAsterixDataItemHandler<T> {
          * @brief Default implementation of decode does nothing.
          * Useful for reserved or ignored items.
          */
-        void decode([[maybe_unused]] T& context, [[maybe_unused]] std::string_view data) const override {};
+        void decode([[maybe_unused]] std::string_view data) override {};
 
         // By default, a data item is NOT mandatory.
         // Derived classes only need to override this if the item is mandatory.
@@ -60,21 +59,10 @@ class AsterixDataItemHandlerBase : public IAsterixDataItemHandler<T> {
          */
         std::string_view getName() const override { return name; };
 
-        void setStats(AsterixStats& s) override {
-            this->stats_ptr = &s;
-        }
-
-        // Helper for derived classes to get the reference
-        AsterixStats& getStats() const {
-            return *stats_ptr;
-        }
-
         static constexpr bool mandatory = false; // Default: items are optional
 
     protected:
         std::string_view name;
-
-        AsterixStats* stats_ptr = nullptr; // Store the pointer for use in subclasses
 };
 
 } // namespace ReactorAsterix

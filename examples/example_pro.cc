@@ -5,29 +5,29 @@
 #include <iomanip>
 
 #include "ReactorAsterix/core/AsterixPacketHandler.h"
-#include "ReactorAsterix/cat001/Asterix1Handler.h"
-#include "ReactorAsterix/cat001/IAsterix1Listener.h"
+#include "ReactorAsterix/cat001/Asterix001Handler.h"
+#include "ReactorAsterix/cat001/IAsterix001Listener.h"
 #include "ReactorAsterix/core/SourceStateManager.h"
 
 using namespace ReactorAsterix;
 
 // Better: Encapsulate the listener logic
-class TerminalLogger : public IAsterix1Listener {
+class TerminalLogger : public IAsterix001Listener {
 public:
-    void onReportDecoded(const Asterix1Report& report) override {
+    void onReportDecoded(const Asterix001Report& report) override {
         std::cout << "\033[1;32m[CAT 001 Report Decoded]\033[0m\n";
 
         // Use SAC/SIC from report
         std::cout << "  Source: SAC=" << static_cast<int>(report.sourceIdentifier.sac) 
                   << " SIC=" << static_cast<int>(report.sourceIdentifier.sic) << "\n";
 
-        if (report.has(Asterix1Report::Presence::HAS_MODE_3A)) {
+        if (report.i001_070_presence) {
              std::cout << "  Mode 3/A: " << std::setfill('0') << std::setw(4) 
-                       << std::oct << report.mode3A.code << std::dec << "\n";
+                       << std::oct << report.i001_070.code << std::dec << "\n";
         }
 
-        std::cout << "  Position: " << report.range << "m @ " << report.azimuth << " rad\n" 
-                  << std::endl;
+        std::cout << "  Position: " << report.i001_040.range << " @ "
+                << report.i001_040.azimuth << " \n" << std::endl;
     }
 };
 
@@ -39,7 +39,7 @@ int main() {
     AsterixPacketHandler packetHandler;
 
     // Use unique_ptr to manage handler ownership
-    auto cat1Handler = std::make_unique<Asterix1Handler>(stateManager);
+    auto cat1Handler = std::make_unique<Asterix001Handler>(stateManager);
 
     // Register listener before moving ownership
     auto logger = std::make_shared<TerminalLogger>();

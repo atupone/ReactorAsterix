@@ -16,22 +16,18 @@
  */
 
 // Own header
-#include <ReactorAsterix/cat001/Asterix1Handler.h>
+#include <ReactorAsterix/cat001/Asterix001Handler.h>
 
 namespace ReactorAsterix {
 
-Asterix1Handler::Asterix1Handler(std::shared_ptr<SourceStateManager> manager)
+Asterix001Handler::Asterix001Handler(std::shared_ptr<SourceStateManager> manager)
     : AsterixCategoryHandler(std::move(manager)) {}
 
-void Asterix1Handler::setStats(AsterixStats& s) {
-    // 2. Propagate the reference to every handler in your compile-time tuple
-    std::apply([&s](auto&&... handler) {
-        (handler.setStats(s), ...);
-    }, m_handlers);
+void Asterix001Handler::setStats(AsterixStats& s) {
     stats_ptr = &s;
 }
 
-uint32_t Asterix1Handler::calculateCurrentTod(struct timespec ts) noexcept {
+uint32_t Asterix001Handler::calculateCurrentTod(struct timespec ts) noexcept {
     // Use the KERNEL timestamp as the fallback/reference
     // Convert timespec (seconds + nanoseconds) to ASTERIX units (1/128 sec)
 
@@ -52,7 +48,7 @@ uint32_t Asterix1Handler::calculateCurrentTod(struct timespec ts) noexcept {
     return refTime;
 }
 
-uint32_t Asterix1Handler::expandTruncatedTime(uint16_t todLSP, uint32_t refTOD) noexcept {
+uint32_t Asterix001Handler::expandTruncatedTime(uint16_t todLSP, uint32_t refTOD) noexcept {
     constexpr uint32_t maxTOD   = 86400 * 128;
     constexpr uint32_t kMspMask = 0xFFFF0000;
     constexpr uint32_t kWindow  = 0x00010000;
@@ -94,12 +90,7 @@ uint32_t Asterix1Handler::expandTruncatedTime(uint16_t todLSP, uint32_t refTOD) 
     return bestT;
 }
 
-bool Asterix1Handler::dispatch(int frn, Asterix1Report& report, std::string_view& data) {
-    // Calls the template version in the base class
-    return AsterixCategoryHandler::dispatch(frn, report, data, m_handlers);
-}
-
-bool Asterix1Handler::onAfterDecode(Asterix1Report& report, struct timespec ts)
+bool Asterix001Handler::onAfterDecode(Asterix001Report& report, struct timespec ts)
 {
     if (!report.sourceRecord->isSynchronized.load(std::memory_order_acquire)) [[unlikely]] {
         return false;
@@ -116,8 +107,8 @@ bool Asterix1Handler::onAfterDecode(Asterix1Report& report, struct timespec ts)
         ref = calculateCurrentTod(ts);
     }
 
-    uint32_t TOD = report.has(Asterix1Report::Presence::HAS_LSP_CLOCK)
-        ? expandTruncatedTime(report.todLSP, ref)
+    uint32_t TOD = report.i001_141_presence
+        ? expandTruncatedTime(report.i001_141.todLSP, ref)
         : ref;
 
     // UPDATE MANAGER FIRST (Using raw Radar TOD)

@@ -67,13 +67,6 @@ class Asterix034Handler final
         bool onAfterDecode(Asterix034Report& report, struct timespec ts);
 
     private:
-        /**
-         * @brief This is the "Hot Path".
-         * Because we call methods on named members, the compiler
-         * will likely INLINE these calls.
-         */
-        bool dispatch(int frn, Asterix034Report& report, std::string_view& data);
-
         // Supports multiple sinks (Logger, Tracker, Display)
         std::vector<std::weak_ptr<IAsterix034Listener>> listeners;
 

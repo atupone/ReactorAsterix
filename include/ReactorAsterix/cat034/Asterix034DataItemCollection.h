@@ -19,6 +19,10 @@
 
 // Inherits from
 #include <ReactorAsterix/core/AsterixDataItemHandlerFixedLength.h>
+#include <ReactorAsterix/core/AsterixDataItemHandlerRepetitive.h>
+
+// System headers
+#include <cstdlib>
 
 namespace ReactorAsterix {
 
@@ -28,14 +32,10 @@ class Asterix034Report;
 /**
  * @file Asterix034DataItemCollection.h
  * @brief Declares the specific handler classes for **ASTERIX Category 034** data items.
- *
- * Each class publicly inherits from an appropriate base class (`AsterixDataItemHandlerFixedLength`
- * or `AsterixDataItemHandlerExtendedLength`) and is responsible for decoding a single
- * data item into the `Asterix034Report` context object.
  */
 
 // ----------------------------------------------------------------------------------
-// ASTERIX CAT 034 DATA ITEM HANDLERS
+// ASTERIX CAT 034 DATA ITEM HANDLERS (Standard v1.29)
 // ----------------------------------------------------------------------------------
 
 /**
@@ -44,20 +44,22 @@ class Asterix034Report;
  * This mandatory, 2-byte item provides the System Area Code (SAC) and System
  * Identification Code (SIC) to uniquely identify the data source.
  */
-class I034_010_Handler final : public AsterixDataItemHandlerFixedLength<Asterix034Report> {
+class I034_010_Handler final : public AsterixDataItemHandlerFixedLength {
     public:
         static constexpr uint8_t FRN = 1;
         static constexpr bool mandatory = true;
-        I034_010_Handler() : AsterixDataItemHandlerFixedLength<Asterix034Report>(2) {
+        I034_010_Handler() : AsterixDataItemHandlerFixedLength(2) {
             name = "I034/010 Data Source Identifier";
         }
 
         /**
          * @brief Decodes the 2-byte Data Source Identifier.
-         * @param context The target `Asterix034Report` object.
          * @param data The raw data buffer.
          */
-        void decode(Asterix034Report& context, std::string_view data) const override;
+        void decode(std::string_view data) override;
+
+        uint8_t sac{0};
+        uint8_t sic{0};
 };
 
 /**
@@ -65,7 +67,7 @@ class I034_010_Handler final : public AsterixDataItemHandlerFixedLength<Asterix0
  *
  * This mandatory, 1-byte item identifies the type of message being transmitted.
  */
-class I034_000_Handler final: public AsterixDataItemHandlerFixedLength<Asterix034Report> {
+class I034_000_Handler final: public AsterixDataItemHandlerFixedLength {
     public:
         static constexpr uint8_t FRN = 2;
         static constexpr bool mandatory = true;
@@ -73,7 +75,19 @@ class I034_000_Handler final: public AsterixDataItemHandlerFixedLength<Asterix03
             name = "I034/000, Message Type";
         }
 
-        void decode(Asterix034Report& context, std::string_view data) const override;
+        void decode(std::string_view data) override;
+
+        enum class MESSAGE_TYPE_T : uint8_t {
+            NORTH_MARKER = 1,
+            SECTOR_CROSSING = 2,
+            GEOGRAPHICAL_FILTER = 3,
+            JAMMING_STROBE = 4,
+            SOLAR_STORM = 5,
+            SSR_JAMMING_STROBE = 6,
+            MODE_S_JAMMING_STROBE = 7
+        };
+
+        MESSAGE_TYPE_T messageType{MESSAGE_TYPE_T::NORTH_MARKER};
 };
 
 /**
@@ -82,14 +96,16 @@ class I034_000_Handler final: public AsterixDataItemHandlerFixedLength<Asterix03
  * This mandatory, 3-byte item represents the time of day, typically as the
  * number of seconds since midnight, in 1/128 second increments.
  */
-class I034_030_Handler final : public AsterixDataItemHandlerFixedLength<Asterix034Report> {
+class I034_030_Handler final : public AsterixDataItemHandlerFixedLength {
     public:
         static constexpr uint8_t FRN = 3;
         static constexpr bool mandatory = false;
         I034_030_Handler(): AsterixDataItemHandlerFixedLength(3) {
             name = "I034/030, Time of Day";
         }
-        void decode(Asterix034Report& context,  std::string_view data) const override;
+        void decode(std::string_view data) override;
+
+        uint32_t TOD{0};
 };
 
 /**
@@ -98,22 +114,87 @@ class I034_030_Handler final : public AsterixDataItemHandlerFixedLength<Asterix0
  * This optional, 1-byte item specifies the sector number from which the data
  * originated, typically used in multi-sector radar systems.
  */
-class I034_020_Handler final : public AsterixDataItemHandlerFixedLength<Asterix034Report> {
+class I034_020_Handler final : public AsterixDataItemHandlerFixedLength {
     public:
         static constexpr uint8_t FRN = 4;
         I034_020_Handler() : AsterixDataItemHandlerFixedLength(1) {
             name = "I034/020, Sector Number";
         }
-        void decode(Asterix034Report& context,  std::string_view data) const override;
+        void decode(std::string_view data) override;
+
+        uint8_t sectorNumber{0};
 };
 
-class I034_041_Handler final : public AsterixDataItemHandlerFixedLength<Asterix034Report> {
+class I034_041_Handler final : public AsterixDataItemHandlerFixedLength {
     public:
         static constexpr uint8_t FRN = 5; // Standard FRN for Rotation Period
         I034_041_Handler() : AsterixDataItemHandlerFixedLength(2) {
             name = "I034/041, Antenna Rotation Period";
         }
-        void decode(Asterix034Report& context, std::string_view data) const override;
+        void decode(std::string_view data) override;
+
+        uint16_t speed{0};
+};
+
+/**
+ * @brief I034/050 System Configuration and Status (Compound Item)
+ */
+class I034_050_Handler final : public AsterixDataItemHandlerFixedLength {
+    public:
+        static constexpr uint8_t FRN = 6;
+        I034_050_Handler() : AsterixDataItemHandlerFixedLength(1) {
+            name = "I034/050 System Configuration and Status";
+        }
+        void decode(std::string_view /* data */) override {
+            std::abort();
+        }
+};
+
+/**
+ * @brief I034/060 System Processing Parameters (Compound item)
+ */
+class I034_060_Handler final : public AsterixDataItemHandlerFixedLength {
+    public:
+        static constexpr uint8_t FRN = 7;
+        I034_060_Handler() : AsterixDataItemHandlerFixedLength(1) {
+            name = "I034/060 System Processing Parameters";
+        }
+        void decode(std::string_view /* data */) override {
+            std::abort();
+        }
+};
+
+/**
+ * @brief I034/070 Plot Count Values (Repetitive)
+ */
+class I034_070_Handler final : public AsterixDataItemHandlerRepetitive {
+    public:
+        static constexpr uint8_t FRN = 8;
+        I034_070_Handler() : AsterixDataItemHandlerRepetitive(2) {
+            name = "I034/070 Plot Count Values";
+        }
+};
+
+/**
+ * @brief I034/100 Generic Polar Window (8 bytes)
+ */
+class I034_100_Handler final : public AsterixDataItemHandlerFixedLength {
+    public:
+        static constexpr uint8_t FRN = 9;
+        I034_100_Handler() : AsterixDataItemHandlerFixedLength(8) {
+            name = "I034/100 Generic Polar Window";
+        }
+};
+
+/**
+ * @brief I034/110 Data Filter (1 byte)
+ */
+class I034_110_Handler final : public AsterixDataItemHandlerFixedLength {
+    public:
+        static constexpr uint8_t FRN = 10;
+        I034_110_Handler() : AsterixDataItemHandlerFixedLength(1) {
+            name = "I034/110 Data Filter";
+        }
 };
 
 /**
@@ -121,13 +202,28 @@ class I034_041_Handler final : public AsterixDataItemHandlerFixedLength<Asterix0
  *
  * This optional, 8-byte item specifies the location of the Radar
  */
-class I034_120_Handler final : public AsterixDataItemHandlerFixedLength<Asterix034Report> {
+class I034_120_Handler final : public AsterixDataItemHandlerFixedLength {
     public:
         static constexpr uint8_t FRN = 11;
         I034_120_Handler() : AsterixDataItemHandlerFixedLength(8) {
             name = "I034/120, 3D-Position of Data Source";
         }
-        void decode(Asterix034Report& context,  std::string_view data) const override;
+        void decode(std::string_view data) override;
+
+        uint16_t height{0};
+        int32_t  latitude{0};
+        int32_t  longitude{0};
+};
+
+/**
+ * @brief I034/110 Data Filter (1 byte)
+ */
+class I034_090_Handler final : public AsterixDataItemHandlerFixedLength {
+    public:
+        static constexpr uint8_t FRN = 12;
+        I034_090_Handler() : AsterixDataItemHandlerFixedLength(2) {
+            name = "I034/090 Collimation Error";
+        }
 };
 
 } // namespace ReactorAsterix

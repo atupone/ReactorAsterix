@@ -19,24 +19,24 @@
 
 // Inherits from
 #include <ReactorAsterix/core/AsterixCategoryHandler.h>
-#include <ReactorAsterix/cat002/Asterix2Report.h>
+#include <ReactorAsterix/cat002/Asterix002Report.h>
 
 // Library headers
 #include <ReactorAsterix/core/SourceStateManager.h>
-#include <ReactorAsterix/cat002/IAsterix2Listener.h>
-#include <ReactorAsterix/cat002/Asterix2DataItemCollection.h>
+#include <ReactorAsterix/cat002/IAsterix002Listener.h>
+#include <ReactorAsterix/cat002/Asterix002DataItemCollection.h>
 
 namespace ReactorAsterix {
 
 /**
- * @class Asterix2Handler
+ * @class Asterix002Handler
  * @brief Handles ASTERIX Category 2: Monoradar Service Messages.
  */
-class Asterix2Handler final
-    : public AsterixCategoryHandler<Asterix2Report, IAsterix2Listener, Asterix2Handler> {
+class Asterix002Handler final
+    : public AsterixCategoryHandler<Asterix002Report, IAsterix002Listener, Asterix002Handler> {
     public:
         // This line is essential for CRTP to work with private members:
-        friend class AsterixCategoryHandler<Asterix2Report, IAsterix2Listener, Asterix2Handler>;
+        friend class AsterixCategoryHandler<Asterix002Report, IAsterix002Listener, Asterix002Handler>;
 
         using HandlerTypes = std::tuple<
             I002_010_Handler,
@@ -58,24 +58,17 @@ class Asterix2Handler final
         /**
          * @brief Constructor that initializes the data item handlers.
          */
-        explicit Asterix2Handler(std::shared_ptr<SourceStateManager> manager);
+        explicit Asterix002Handler(std::shared_ptr<SourceStateManager> manager);
 
         void setStats(AsterixStats& s) override;
 
     protected:
         // Implementation of the Hook: Time Synchronization Logic
-        bool onAfterDecode(Asterix2Report& report, struct timespec ts);
+        bool onAfterDecode(Asterix002Report& report, struct timespec ts);
 
     private:
-        /**
-         * @brief This is the "Hot Path".
-         * Because we call methods on named members, the compiler
-         * will likely INLINE these calls.
-         */
-        bool dispatch(int frn, Asterix2Report& report, std::string_view& data);
-
         // Supports multiple sinks (Logger, Tracker, Display)
-        std::vector<std::weak_ptr<IAsterix2Listener>> listeners;
+        std::vector<std::weak_ptr<IAsterix002Listener>> listeners;
 
         // C++17 Reader-Writer Lock
         mutable std::shared_mutex listenerMutex;

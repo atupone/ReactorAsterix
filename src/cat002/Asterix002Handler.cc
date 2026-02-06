@@ -16,7 +16,7 @@
  */
 
 // Own header
-#include <ReactorAsterix/cat002/Asterix2Handler.h>
+#include <ReactorAsterix/cat002/Asterix002Handler.h>
 
 // Library headers
 #include <ReactorAsterix/core/AsterixConstants.h>
@@ -28,28 +28,21 @@ using namespace Constants;
 /**
  * @brief Constructor for the ASTERIX Category 2 Handler.
  */
-Asterix2Handler::Asterix2Handler(std::shared_ptr<SourceStateManager> manager)
+Asterix002Handler::Asterix002Handler(std::shared_ptr<SourceStateManager> manager)
     : AsterixCategoryHandler(std::move(manager)) {}
 
-void Asterix2Handler::setStats(AsterixStats& s) {
-    // 2. Propagate the reference to every handler in your compile-time tuple
-    std::apply([&s](auto&&... handler) {
-        (handler.setStats(s), ...);
-    }, m_handlers);
+void Asterix002Handler::setStats(AsterixStats& s) {
     stats_ptr = &s;
 }
 
-bool Asterix2Handler::dispatch(int frn, Asterix2Report& report, std::string_view& data) {
-    // Calls the template version in the base class
-    return AsterixCategoryHandler::dispatch(frn, report, data, m_handlers);
-}
-
-bool Asterix2Handler::onAfterDecode(Asterix2Report& report, struct timespec ts)
+bool Asterix002Handler::onAfterDecode(Asterix002Report& report, struct timespec ts)
 {
-    // ALWAYS update the Radar's 24h clock state (for bit-stitching ref)
-    report.sourceRecord->lastTod = report.TOD;
+    uint32_t TOD = report.i002_030.TOD;
 
-    bool isNorth = (report.messageType == Asterix2Report::MessageType::NORTH_MARKER);
+    // ALWAYS update the Radar's 24h clock state (for bit-stitching ref)
+    report.sourceRecord->lastTod = TOD;
+
+    bool isNorth = (report.i002_000.messageType == I002_000_Handler::MESSAGE_TYPE_T::NORTH_MARKER);
     // Timing Synchronization Logic: Only triggered by North Marker (Type 1)
     if (isNorth) {
 
@@ -62,7 +55,7 @@ bool Asterix2Handler::onAfterDecode(Asterix2Report& report, struct timespec ts)
             static_cast<uint32_t>(static_cast<uint64_t>(ts.tv_nsec) / NS_PER_AST_TOD_UNIT);
 
         // Calculate difference (Radar - Kernel)
-        int32_t diff = static_cast<int32_t>(report.TOD) - static_cast<int32_t>(kernel_128th);
+        int32_t diff = static_cast<int32_t>(TOD) - static_cast<int32_t>(kernel_128th);
 
         // Handle Midnight Wrap using constexpr
         if (diff > static_cast<int32_t>(AST_TOD_HALFDAY_UNITS)) {
@@ -81,16 +74,19 @@ bool Asterix2Handler::onAfterDecode(Asterix2Report& report, struct timespec ts)
 
     // APPLY OFFSET FOR LISTENERS (Transition to System Domain)
     // Now we shift the report's TOD to match our local Linux clock
-    int32_t corrected = static_cast<int32_t>(report.TOD) -
+    int32_t corrected = static_cast<int32_t>(TOD) -
         report.sourceRecord->averageOffset;
 
+    // Handle the midnight wrap-around
     constexpr int32_t TICKS_PER_DAY = 86400 * 128;
+
     if (corrected < 0) {
-        corrected += TICKS_PER_DAY; // Handle positive offset near midnight
+        corrected += TICKS_PER_DAY; // Handles "just after midnight"
     } else if (corrected >= TICKS_PER_DAY) {
-        corrected -= TICKS_PER_DAY; // Handle negative offset near midnight
+        corrected -= TICKS_PER_DAY; // Handles "just before midnight"
     }
 
+    // Apply the shift
     report.TOD = static_cast<uint32_t>(corrected);
 
     return true;

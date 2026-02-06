@@ -30,8 +30,7 @@ namespace ReactorAsterix {
  * @brief Helper template for ASTERIX data items that have a variable length
  * determined by an extension bit (FX) in the Least Significant Bit (LSB).
  */
-template <typename T>
-class AsterixDataItemHandlerRepetitive : public AsterixDataItemHandlerBase<T> {
+class AsterixDataItemHandlerRepetitive : public AsterixDataItemHandlerBase {
     public:
         /**
          * @brief Constructor
@@ -45,30 +44,27 @@ class AsterixDataItemHandlerRepetitive : public AsterixDataItemHandlerBase<T> {
          * @brief Calculates the total size by scanning for the FX bit (LSB).
          * Matches the signature in IAsterixDataItemHandler.h.
          */
-        size_t getSize(std::string_view data) const final;
+        inline size_t getSize(std::string_view data) const final {
+            size_t totalSize = 1;
+            if (data.size() < 1) {
+                return 0;
+            }
+
+            const uint8_t rep = static_cast<uint8_t>(data[0]);
+            if (rep == 0) {
+                return 0;
+            }
+
+            totalSize += rep * k;
+
+            // Safety check: if the loop finished because we ran out of data
+            // rather than finding a 0 FX bit, the packet is malformed.
+            return (totalSize <= data.size()) ? totalSize : 0;
+        }
 
     protected:
         uint8_t k, i;
 };
-
-template <typename T>
-size_t AsterixDataItemHandlerRepetitive<T>::getSize(std::string_view data) const {
-    size_t totalSize = 1;
-    if (data.size() < 1) {
-        return 0;
-    }
-
-    const uint8_t rep = static_cast<uint8_t>(data[0]);
-    if (rep == 0) {
-        return 0;
-    }
-
-    totalSize += rep * k;
-
-    // Safety check: if the loop finished because we ran out of data
-    // rather than finding a 0 FX bit, the packet is malformed.
-    return (totalSize <= data.size()) ? totalSize : 0;
-}
 
 } // namespace ReactorAsterix
 
