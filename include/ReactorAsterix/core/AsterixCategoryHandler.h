@@ -90,6 +90,10 @@ class AsterixCategoryHandler : public IAsterixCategoryHandler {
          */
         virtual ~AsterixCategoryHandler() = default;
 
+        void setStats(AsterixStats& s) override {
+            stats_ptr = &s;
+        }
+
         using ListenerList = std::vector<std::weak_ptr<ListenerInterface>>;
 
         void addListener(std::shared_ptr<ListenerInterface> l) {
@@ -207,6 +211,28 @@ class AsterixCategoryHandler : public IAsterixCategoryHandler {
         }
 
     protected:
+        /**
+         * @brief Applies the source offset and handles midnight wrap-around.
+         * Transitions a raw Radar TOD to the System Domain.
+         */
+        uint32_t applyTimeCorrection(uint32_t rawTod, const SourceRecord& record) const {
+            // Update the Radar's 24h clock state for reference
+            record.lastTod.store(rawTod, std::memory_order_relaxed);
+
+            // Apply Offset (Transition to System Domain)
+            constexpr int32_t TICKS_PER_DAY = 86400 * 128;
+            int32_t corrected = static_cast<int32_t>(rawTod)
+                - record.averageOffset.load(std::memory_order_relaxed);
+
+            if (corrected < 0) {
+                corrected += TICKS_PER_DAY;
+            } else if (corrected >= TICKS_PER_DAY) {
+                corrected -= TICKS_PER_DAY;
+            }
+
+            return static_cast<uint32_t>(corrected);
+        }
+
         /**
          * @brief Checks if any bit is set in the received FSPEC for which
          * we do NOT have a registered handler.

@@ -60,8 +60,6 @@ class Asterix002Handler final
          */
         explicit Asterix002Handler(std::shared_ptr<SourceStateManager> manager);
 
-        void setStats(AsterixStats& s) override;
-
     protected:
         // Implementation of the Hook: Time Synchronization Logic
         bool onAfterDecode(Asterix002Report& report, struct timespec ts);

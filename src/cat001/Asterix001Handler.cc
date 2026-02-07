@@ -23,10 +23,6 @@ namespace ReactorAsterix {
 Asterix001Handler::Asterix001Handler(std::shared_ptr<SourceStateManager> manager)
     : AsterixCategoryHandler(std::move(manager)) {}
 
-void Asterix001Handler::setStats(AsterixStats& s) {
-    stats_ptr = &s;
-}
-
 uint32_t Asterix001Handler::calculateCurrentTod(struct timespec ts) noexcept {
     // Use the KERNEL timestamp as the fallback/reference
     // Convert timespec (seconds + nanoseconds) to ASTERIX units (1/128 sec)
@@ -111,28 +107,8 @@ bool Asterix001Handler::onAfterDecode(Asterix001Report& report, struct timespec 
         ? expandTruncatedTime(report.i001_141.todLSP, ref)
         : ref;
 
-    // UPDATE MANAGER FIRST (Using raw Radar TOD)
-    // ALWAYS update the Radar's 24h clock state (for bit-stitching ref)
-    // Update persistent raw time
-    report.sourceRecord->lastTod = TOD;
-
-    // APPLY OFFSET FOR LISTENERS (Transition to System Domain)
-    // Now we shift the report's TOD to match our local Linux clock
-    // Get the average offset directly from the record (No lookup needed!)
-    int32_t corrected = static_cast<int32_t>(TOD) -
-        report.sourceRecord->averageOffset;
-
-    // Handle the midnight wrap-around
-    constexpr int32_t TICKS_PER_DAY = 86400 * 128;
-
-    if (corrected < 0) {
-        corrected += TICKS_PER_DAY; // Handles "just after midnight"
-    } else if (corrected >= TICKS_PER_DAY) {
-        corrected -= TICKS_PER_DAY; // Handles "just before midnight"
-    }
-
     // Apply the shift
-    report.TOD = static_cast<uint32_t>(corrected);
+    report.TOD = applyTimeCorrection(TOD, *report.sourceRecord);
 
     return true;
 }

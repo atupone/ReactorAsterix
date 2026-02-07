@@ -31,17 +31,11 @@ using namespace Constants;
 Asterix034Handler::Asterix034Handler(std::shared_ptr<SourceStateManager> manager)
     : AsterixCategoryHandler(std::move(manager)) {}
 
-void Asterix034Handler::setStats(AsterixStats& s) {
-    stats_ptr = &s;
-}
-
 bool Asterix034Handler::onAfterDecode(Asterix034Report& report, struct timespec ts)
 {
     uint32_t TOD = report.i034_030.TOD;
 
     // ALWAYS update the Radar's 24h clock state (for bit-stitching ref)
-    report.sourceRecord->lastTod = TOD;
-
     bool isNorth = (report.i034_000.messageType == I034_000_Handler::MESSAGE_TYPE_T::NORTH_MARKER);
     // Timing Synchronization Logic: Only triggered by North Marker (Type 1)
     if (isNorth) {
@@ -69,25 +63,13 @@ bool Asterix034Handler::onAfterDecode(Asterix034Report& report, struct timespec 
     }
 
     if (!(isNorth || report.sourceRecord->isSynchronized.load(std::memory_order_acquire))) [[unlikely]] {
+        // Still update lastTod for future bit-stitching even if not synced for distribution
+        report.sourceRecord->lastTod.store(TOD, std::memory_order_relaxed);
         return false;
     };
 
-    // APPLY OFFSET FOR LISTENERS (Transition to System Domain)
-    // Now we shift the report's TOD to match our local Linux clock
-    int32_t corrected = static_cast<int32_t>(TOD) -
-        report.sourceRecord->averageOffset;
-
-    // Handle the midnight wrap-around
-    constexpr int32_t TICKS_PER_DAY = 86400 * 128;
-
-    if (corrected < 0) {
-        corrected += TICKS_PER_DAY; // Handles "just after midnight"
-    } else if (corrected >= TICKS_PER_DAY) {
-        corrected -= TICKS_PER_DAY; // Handles "just before midnight"
-    }
-
     // Apply the shift
-    report.TOD = static_cast<uint32_t>(corrected);
+    report.TOD = applyTimeCorrection(TOD, *report.sourceRecord);
 
     return true;
 }
