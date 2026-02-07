@@ -29,6 +29,10 @@
 
 namespace ReactorAsterix {
 
+// Initialize the statics
+thread_local AsterixStatsData AsterixPacketHandler::localStats{};
+thread_local uint32_t AsterixPacketHandler::packetCount = 0;
+
 /**
  * @brief Registers a handler for a specific ASTERIX category.
  * The handler is linked to the global stats object before ownership is transferred.
@@ -76,7 +80,7 @@ void AsterixPacketHandler::handlePacket(const uint8_t data[], size_t size, struc
     if (!data || size == 0) [[unlikely]] return;
 
     // Increment total packets received
-    stats.totalPackets.fetch_add(1, std::memory_order_relaxed);
+    localStats.totalPackets++;
 
     // Create a view to manage the buffer without manual pointer arithmetic errors
     std::string_view buffer(reinterpret_cast<const char*>(data), size);
@@ -89,14 +93,21 @@ void AsterixPacketHandler::handlePacket(const uint8_t data[], size_t size, struc
             buffer.remove_prefix(blockLength);
         } else [[unlikely]] {
             // Critical parsing error (e.g., bad length), discard remainder of packet
-            stats.malformedBlocks.fetch_add(1, std::memory_order_relaxed);
+            localStats.malformedBlocks++;
             break;
         }
     }
 
     // Capture remaining bytes that didn't form a full block
     if (!buffer.empty()) [[unlikely]] {
-        stats.trailingBytesCount.fetch_add(buffer.size(), std::memory_order_relaxed);
+        localStats.trailingBytesCount++;
+    }
+
+    // Periodic Merge
+    if (++packetCount >= 1000) {
+        stats.merge(localStats);
+        localStats.reset();
+        packetCount = 0;
     }
 }
 
@@ -130,35 +141,36 @@ size_t AsterixPacketHandler::processDataBlock(
     // Length must be at least the size of the header.
     // Length must not exceed the actual data available in the buffer.
     if (length < Constants::HEADER_SIZE || length > block.size()) [[unlikely]] {
+        localStats.malformedBlocks++;
         return 0;
     }
+    localStats.totalBlocks++;
 
     auto* handler = categoryHandlers[category];
+    if (!handler) [[unlikely]] {
+        localStats.unhandledCategories++;
+        return length;
+    }
 
-    if (handler) [[likely]] {
-        size_t offset = Constants::HEADER_SIZE;
+    size_t offset = Constants::HEADER_SIZE;
 
-        // A single Data Block can contain multiple Data Records.
-        while (offset < length) {
-            // Create a view for the remaining data in this block
-            std::string_view remaining = block.substr(offset, length - offset);
+    // A single Data Block can contain multiple Data Records.
+    while (offset < length) {
+        // Create a view for the remaining data in this block
+        std::string_view remaining = block.substr(offset, length - offset);
 
-            size_t consumed = dispatchRecord(remaining, handler, ts);
+        size_t consumed = dispatchRecord(remaining, handler, ts);
 
-            if (consumed > 0) {
-                offset += consumed;
-            } else [[unlikely]] {
-                // If a record cannot be parsed, skip the rest of this block.
-                // Track specific record failures.
-                stats.recordParseErrors.fetch_add(1, std::memory_order_relaxed);
+        if (consumed > 0) {
+            offset += consumed;
+        } else [[unlikely]] {
+            // If a record cannot be parsed, skip the rest of this block.
+            // Track specific record failures.
+            localStats.recordParseErrors++;
 
-                // Abort the rest of the block; we cannot trust the stream position.
-                break;
-            }
+            // Abort the rest of the block; we cannot trust the stream position.
+            break;
         }
-    } else [[unlikely]] {
-        // Increment stats if the category is not registered
-        stats.unhandledCategories.fetch_add(1, std::memory_order_relaxed);
     }
 
     // Return the total length of the data block so handlePacket can advance

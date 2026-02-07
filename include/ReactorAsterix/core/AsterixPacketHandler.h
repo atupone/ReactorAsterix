@@ -130,7 +130,11 @@ class alignas(CacheLineSize) AsterixPacketHandler {
         // If categories are added sequentially, they stay contiguous in RAM.
         std::vector<std::unique_ptr<IAsterixCategoryHandler>> categoryPool;
 
-        AsterixStats stats{}; // The stats object is stored here
+        AsterixStats stats; // The stats object is stored here
+
+        // These live in the Thread Local Storage (TLS) of EACH worker thread
+        static thread_local AsterixStatsData localStats;
+        static thread_local uint32_t packetCount;
 };
 
 } // namespace ReactorAsterix

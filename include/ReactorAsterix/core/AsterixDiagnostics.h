@@ -26,18 +26,14 @@ namespace ReactorAsterix {
     constexpr std::size_t CacheLineSize = 64;
 
     /**
-     * @brief A Plain Old Data (POD) struct representing a snapshot of statistics.
-     * Unlike AsterixStats, this CAN be copied, printed, or serialized.
+     * @brief A POD struct for high-speed local increments and snapshots.
+     * This is used for:
+     * 1. Thread-local storage to avoid atomic contention.
+     * 2. Returning a copyable 'snapshot' of stats to the user.
      */
     struct AsterixStatsData {
-        // Align the struct to the cache line size (usually 64 bytes)
-        // to ensure this whole block doesn't share a line with other nearby data.
-        alignas(CacheLineSize)uint64_t totalPackets{0};
-
-        // If threads update these counters independently (e.g., one thread handles
-        // good packets, another handles errors), pad them.
-        // Otherwise, grouping them is fine if updated by the same thread.
-
+        uint64_t totalPackets{0};
+        uint64_t totalBlocks{0};
         uint64_t trailingBytesCount{0};
         uint64_t unhandledCategories{0};
         uint64_t malformedBlocks{0};
@@ -46,18 +42,22 @@ namespace ReactorAsterix {
         uint64_t protocolViolations{0};
         uint64_t unhandledItems{0};
         uint64_t uninterpretedItems{0};
+
+        /// Resets all counters to zero.
+        void reset() noexcept {
+            *this = {};
+        }
     };
 
     /**
-     * @brief Thread-safe statistics counters.
-     * Note: std::atomic is non-copyable.
+     * @struct AsterixStats
+     * @brief Thread-safe container using atomics for global statistics counters.
      */
     struct AsterixStats {
         std::atomic<uint64_t> totalPackets{0};
+        std::atomic<uint64_t> totalBlocks{0};
         std::atomic<uint64_t> trailingBytesCount{0};
-
         std::atomic<uint64_t> unhandledCategories{0};
-
         std::atomic<uint64_t> malformedBlocks{0};
         std::atomic<uint64_t> malformedRecords{0};
         std::atomic<uint64_t> recordParseErrors{0};
@@ -66,13 +66,29 @@ namespace ReactorAsterix {
         std::atomic<uint64_t> uninterpretedItems{0};
 
         /**
-         * @brief Create a copyable snapshot of the current counters.
-         * Uses memory_order_relaxed for performance, as strict ordering
-         * is rarely required for analytics counters.
+         * @brief Merges a local stats object into the global atomics.
+         * Use this every N packets to avoid constant cache invalidation.
+         */
+        void merge(const AsterixStatsData& local) noexcept {
+            totalPackets.fetch_add(local.totalPackets, std::memory_order_relaxed);
+            totalBlocks.fetch_add(local.totalBlocks, std::memory_order_relaxed);
+            trailingBytesCount.fetch_add(local.trailingBytesCount, std::memory_order_relaxed);
+            unhandledCategories.fetch_add(local.unhandledCategories, std::memory_order_relaxed);
+            malformedBlocks.fetch_add(local.malformedBlocks, std::memory_order_relaxed);
+            malformedRecords.fetch_add(local.malformedRecords, std::memory_order_relaxed);
+            recordParseErrors.fetch_add(local.recordParseErrors, std::memory_order_relaxed);
+            protocolViolations.fetch_add(local.protocolViolations, std::memory_order_relaxed);
+            unhandledItems.fetch_add(local.unhandledItems, std::memory_order_relaxed);
+            uninterpretedItems.fetch_add(local.uninterpretedItems, std::memory_order_relaxed);
+        }
+
+        /**
+         * @brief Returns a consistent snapshot of the current global state.
          */
         [[nodiscard]] AsterixStatsData snapshot() const noexcept {
             return {
                 totalPackets.load(std::memory_order_relaxed),
+                totalBlocks.load(std::memory_order_relaxed),
                 trailingBytesCount.load(std::memory_order_relaxed),
                 unhandledCategories.load(std::memory_order_relaxed),
                 malformedBlocks.load(std::memory_order_relaxed),
@@ -81,20 +97,6 @@ namespace ReactorAsterix {
                 protocolViolations.load(std::memory_order_relaxed),
                 unhandledItems.load(std::memory_order_relaxed)
             };
-        }
-
-        /**
-         * @brief Resets all counters to zero.
-         */
-        void reset() noexcept {
-            totalPackets.store(0, std::memory_order_relaxed);
-            trailingBytesCount.store(0, std::memory_order_relaxed);
-            unhandledCategories.store(0, std::memory_order_relaxed);
-            malformedBlocks.store(0, std::memory_order_relaxed);
-            malformedRecords.store(0, std::memory_order_relaxed);
-            recordParseErrors.store(0, std::memory_order_relaxed);
-            protocolViolations.store(0, std::memory_order_relaxed);
-            unhandledItems.store(0, std::memory_order_relaxed);
         }
     };
 }
