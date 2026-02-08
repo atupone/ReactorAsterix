@@ -103,7 +103,7 @@ bool Asterix001Handler::onAfterDecode(Asterix001Report& report, struct timespec 
         ref = calculateCurrentTod(ts);
     }
 
-    uint32_t TOD = report.i001_141_presence
+    uint32_t TOD = report.i001_141.presence
         ? expandTruncatedTime(report.i001_141.todLSP, ref)
         : ref;
 

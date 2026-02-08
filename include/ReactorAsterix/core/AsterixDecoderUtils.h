@@ -42,14 +42,18 @@ class DummyItem : AsterixDataItemHandlerBase {
 [[maybe_unused]] static bool dummy_presence;
 
 template <typename T>
-    bool decode_item(FastBitReader& reader, int& bit, T& item, std::string_view& data, bool& presence) {
-        presence = reader.readBit(bit);
-        if (!presence) return true;
+    bool decode_item(FastBitReader& reader, int& bit, T& item, std::string_view& data) {
+        // Read the bit from the FSPEC and store it directly in the handler's presence flag
+        item.presence = reader.readBit(bit);
+
+        // If the bit is 0, the item is not in this record; move to the next item
+        if (!item.presence) return true;
 
         auto itemSize = item.getSize(data);
         if (itemSize > data.size()) [[unlikely]] {
             return false;
         }
+
         item.decode(data.substr(0, itemSize));
         data.remove_prefix(itemSize);
         return true;
@@ -72,8 +76,8 @@ template <size_t I = 0, typename... Octets>
             static_assert(num_fields <= 7, "An ASTERIX FSPEC octet cannot have more than 7 data fields.");
 
             // Decode available fields
-            bool success = std::apply([&](auto&... fields) {
-                    return (decode_item(reader, bit, fields.first, data, fields.second) && ...);
+            bool success = std::apply([&](auto&... items) {
+                    return (decode_item(reader, bit, items, data) && ...);
                     }, current_octet);
 
             if (!success) return false;

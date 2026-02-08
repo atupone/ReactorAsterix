@@ -35,39 +35,35 @@ bool Asterix001Report::process_all_octets(
     FastBitReader reader(raw);
     int bit = 7; // Start at MSB
 
-    auto pair_func = [](auto& item, bool& pres) {
-        return std::pair<decltype(item)&, bool&>(item, pres);
-    };
-
     // Declarative Schema: tuple to match ASTERIX FSPEC layout
     auto schema = std::make_tuple(
         // Octet 1
-        std::make_tuple(
-            pair_func(i001_010, i001_010_presence),
-            pair_func(i001_020, i001_020_presence),
-            pair_func(i001_040, i001_040_presence),
-            pair_func(i001_070, i001_070_presence),
-            pair_func(i001_090, i001_090_presence),
-            pair_func(i001_130, i001_130_presence),
-            pair_func(i001_141, i001_141_presence)),
+        std::tie(
+            i001_010,
+            i001_020,
+            i001_040,
+            i001_070,
+            i001_090,
+            i001_130,
+            i001_141),
         // Octet 2
-        std::make_tuple(
-            pair_func(i001_050, i001_050_presence),
-            pair_func(i001_120, i001_120_presence),
-            pair_func(i001_131, i001_131_presence),
-            pair_func(i001_080, i001_080_presence),
-            pair_func(i001_100, i001_100_presence),
-            pair_func(i001_060, i001_060_presence),
-            pair_func(i001_030, i001_030_presence)),
+        std::tie(
+            i001_050,
+            i001_120,
+            i001_131,
+            i001_080,
+            i001_100,
+            i001_060,
+            i001_030),
         // Octet 3
-        std::make_tuple(
-            pair_func(i001_150, i001_150_presence))
+        std::tie(
+            i001_150)
     );
 
     if (!decode_fspec_recursive(reader, bit, data, schema)) return false;
 
     // 010 - Source ID side effect
-    if (i001_010_presence) {
+    if (i001_010.presence) {
         setSourceIdentifier(i001_010.sac, i001_010.sic);
     }
 

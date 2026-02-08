@@ -49,41 +49,29 @@ class Asterix034Report final : public AsterixMessage {
         // --- Data Items (Standard Cat 034 v1.27) ---
 
         // FSPEC Octet 1
-        bool i034_010_presence{false};
         I034_010_Handler i034_010; // Data Source Identifier
 
-        bool i034_000_presence{false};
         I034_000_Handler i034_000; // Message Type
 
-        bool i034_030_presence{false};
         I034_030_Handler i034_030; // Time of Message
 
-        bool i034_020_presence{false};
         I034_020_Handler i034_020; // Sector Number
 
-        bool i034_041_presence{false};
         I034_041_Handler i034_041; // Antenna Rotation Period
 
-        bool i034_050_presence{false};
         I034_050_Handler i034_050; // System Configuration/Status
 
-        bool i034_060_presence{false};
         I034_060_Handler i034_060; // System Processing Parameters
 
         // FSPEC Octet 2
-        bool i034_070_presence{false};
         I034_070_Handler i034_070; // Plot Count Values
 
-        bool i034_100_presence{false};
         I034_100_Handler i034_100; // Generic Polar Window
 
-        bool i034_110_presence{false};
         I034_110_Handler i034_110; // Data Filter
 
-        bool i034_120_presence{false};
         I034_120_Handler i034_120; // 3D Radar Position
 
-        bool i034_090_presence{false};
         I034_090_Handler i034_090; // Collimation Error
 };
 

@@ -70,6 +70,9 @@ class IAsterixDataItemHandler {
          */
         [[nodiscard]] virtual size_t getSize(std::string_view data) const = 0;
 
+        // The universal presence flag
+        bool presence{false};
+
         /**
          * @brief Checks if the data item is mandatory.
          *
@@ -86,6 +89,11 @@ class IAsterixDataItemHandler {
          * @return The name of the data item as a string.
          */
         virtual std::string_view getName() const = 0;
+
+        // Helper to clear state before decoding a new record
+        virtual void reset() {
+            presence = false;
+        }
 };
 
 } // namespace ReactorAsterix

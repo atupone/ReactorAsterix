@@ -44,51 +44,36 @@ class Asterix001Report final : public AsterixMessage {
                AsterixStatsData& stats);
 
        // --- FSPEC Octet 1 ---
-       bool i001_010_presence{false};
        I001_010_Handler i001_010;
 
-       bool i001_020_presence{false};
        I001_020_Handler i001_020;
 
-       bool i001_040_presence{false};
        I001_040_Handler i001_040;
 
-       bool i001_070_presence{false};
        I001_070_Handler i001_070;
 
-       bool i001_090_presence{false};
        I001_090_Handler i001_090;
 
-       bool i001_130_presence{false};
        I001_130_Handler i001_130;
 
-       bool i001_141_presence{false};
        I001_141_Handler i001_141;
 
        // --- FSPEC Octet 2 ---
-       bool i001_050_presence{false};
        I001_050_Handler i001_050;
 
-       bool i001_120_presence{false};
        I001_120_Handler i001_120;
 
-       bool i001_131_presence{false};
        I001_131_Handler i001_131;
 
-       bool i001_080_presence{false};
        I001_080_Handler i001_080;
 
-       bool i001_100_presence{false};
        I001_100_Handler i001_100;
 
-       bool i001_060_presence{false};
        I001_060_Handler i001_060;
 
-       bool i001_030_presence{false};
        I001_030_Handler i001_030;
 
        // --- FSPEC Octet 3 ---
-       bool i001_150_presence{false};
        I001_150_Handler i001_150;
 };
 

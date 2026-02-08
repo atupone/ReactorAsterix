@@ -35,57 +35,53 @@ bool Asterix048Report::process_all_octets(
     FastBitReader reader(raw);
     int bit = 7; // Start at MSB
 
-    auto pair_func = [](auto& item, bool& pres) {
-        return std::pair<decltype(item)&, bool&>(item, pres);
-    };
-
     // Declarative Schema: tuple to match ASTERIX FSPEC layout
     auto schema = std::make_tuple(
         // Octet 1
-        std::make_tuple(
-            pair_func(i048_010, i048_010_presence),
-            pair_func(i048_140, i048_140_presence),
-            pair_func(i048_020, i048_020_presence),
-            pair_func(i048_040, i048_040_presence),
-            pair_func(i048_070, i048_070_presence),
-            pair_func(i048_090, i048_090_presence),
-            pair_func(i048_130, i048_130_presence)),
+        std::tie(
+            i048_010,
+            i048_140,
+            i048_020,
+            i048_040,
+            i048_070,
+            i048_090,
+            i048_130),
         // Octet 2
-        std::make_tuple(
-            pair_func(i048_220, i048_220_presence),
-            pair_func(i048_240, i048_240_presence),
-            pair_func(i048_250, i048_250_presence),
-            pair_func(i048_161, i048_161_presence),
-            pair_func(i048_042, i048_042_presence),
-            pair_func(i048_200, i048_200_presence),
-            pair_func(i048_170, i048_170_presence)),
+        std::tie(
+            i048_220,
+            i048_240,
+            i048_250,
+            i048_161,
+            i048_042,
+            i048_200,
+            i048_170),
         // Octet 3
-        std::make_tuple(
-            pair_func(i048_210, i048_210_presence),
-            pair_func(i048_030, i048_030_presence),
-            pair_func(i048_080, i048_080_presence),
-            pair_func(i048_100, i048_100_presence),
-            pair_func(i048_110, i048_110_presence),
-            pair_func(i048_120, i048_120_presence),
-            pair_func(i048_230, i048_230_presence)),
+        std::tie(
+            i048_210,
+            i048_030,
+            i048_080,
+            i048_100,
+            i048_110,
+            i048_120,
+            i048_230),
         // Octet 4
-        std::make_tuple(
-            pair_func(i048_260, i048_260_presence),
-            pair_func(i048_055, i048_055_presence),
-            pair_func(i048_050, i048_050_presence),
-            pair_func(i048_065, i048_065_presence),
-            pair_func(i048_060, i048_060_presence))
+        std::tie(
+            i048_260,
+            i048_055,
+            i048_050,
+            i048_065,
+            i048_060)
     );
 
     if (!decode_fspec_recursive(reader, bit, data, schema)) return false;
 
     // 010 - Source ID side effect
-    if (i048_010_presence) {
+    if (i048_010.presence) {
         setSourceIdentifier(i048_010.sac, i048_010.sic);
     }
 
     // 020 - Abnormal checks
-    if (i048_020_presence && (i048_020.sim || i048_020.rab || i048_020.tst)) {
+    if (i048_020.presence && (i048_020.sim || i048_020.rab || i048_020.tst)) {
         stats.uninterpretedItems++;
         return false;
     }

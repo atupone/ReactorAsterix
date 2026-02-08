@@ -49,38 +49,27 @@ class Asterix002Report : public AsterixMessage {
         // --- Data Items (Standard Cat 002) ---
 
         // --- FSPEC Octet 1 ---
-        bool i002_010_presence{false};
         I002_010_Handler i002_010;
 
-        bool i002_000_presence{false};
         I002_000_Handler i002_000;
 
-        bool i002_020_presence{false};
         I002_020_Handler i002_020;
 
-        bool i002_030_presence{false};
         I002_030_Handler i002_030;
 
-        bool i002_041_presence{false};
         I002_041_Handler i002_041;
 
-        bool i002_050_presence{false};
         I002_050_Handler i002_050;
 
-        bool i002_060_presence{false};
         I002_060_Handler i002_060;
 
         // --- FSPEC Octet 2 ---
-        bool i002_070_presence{false};
         I002_070_Handler i002_070;
 
-        bool i002_100_presence{false};
         I002_100_Handler i002_100;
 
-        bool i002_090_presence{false};
         I002_090_Handler i002_090;
 
-        bool i002_080_presence{false};
         I002_080_Handler i002_080;
 };
 
