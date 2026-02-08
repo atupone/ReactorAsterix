@@ -90,10 +90,6 @@ class AsterixCategoryHandler : public IAsterixCategoryHandler {
          */
         virtual ~AsterixCategoryHandler() = default;
 
-        void setStats(AsterixStats& s) override {
-            stats_ptr = &s;
-        }
-
         using ListenerList = std::vector<std::weak_ptr<ListenerInterface>>;
 
         void addListener(std::shared_ptr<ListenerInterface> l) {
@@ -140,7 +136,11 @@ class AsterixCategoryHandler : public IAsterixCategoryHandler {
          * @brief The Hoisted Orchestrator.
          * Shared by all categories (Cat 001, 002, etc.)
          */
-        size_t processDataRecord(std::string_view fspec, std::string_view payload, struct timespec ts) override {
+        size_t processDataRecord(
+                std::string_view fspec,
+                std::string_view payload,
+                struct timespec ts,
+                AsterixStatsData& localStats) override {
             // Initialize Report (Type T is Asterix1Report, Asterix2Report, etc.)
             T report;
 
@@ -151,18 +151,18 @@ class AsterixCategoryHandler : public IAsterixCategoryHandler {
 
             // Validation logic
             if (!checkMandatoryItems(fspec)) [[unlikely]] {
-                if (stats_ptr) stats_ptr->protocolViolations.fetch_add(1, std::memory_order_relaxed);
+                localStats.protocolViolations++;
                 return 0;
             }
 
             if (!checkAllHandlersSupported(fspec)) [[unlikely]] {
-                if (stats_ptr) stats_ptr->unhandledItems.fetch_add(1, std::memory_order_relaxed);
+                localStats.unhandledItems++;
                 return 0;
             }
 
             std::string_view data = payload;
 
-            bool result = report.process_all_octets(fspec, data, *stats_ptr);
+            bool result = report.process_all_octets(fspec, data, localStats);
 
             if (!result) [[unlikely]] {
                 return 0;
@@ -171,7 +171,7 @@ class AsterixCategoryHandler : public IAsterixCategoryHandler {
             size_t consumed = payload.size() - data.size();
 
             if (consumed == 0 && payload.size() > 0) [[unlikely]] {
-                if (stats_ptr) stats_ptr->malformedRecords.fetch_add(1, std::memory_order_relaxed);
+                localStats.malformedRecords++;
                 return 0;
             }
 
@@ -267,11 +267,6 @@ class AsterixCategoryHandler : public IAsterixCategoryHandler {
             }
             return true;
         }
-
-        /**
-         * @brief Pointer to central diagnostic stats.
-         */
-        AsterixStats* stats_ptr = nullptr;
 
         std::shared_ptr<SourceStateManager> sourceStateManager;
 

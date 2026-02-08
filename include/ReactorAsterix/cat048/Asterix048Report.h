@@ -43,7 +43,7 @@ class Asterix048Report final : public AsterixMessage {
 
        bool process_all_octets(
                std::string_view fspec, std::string_view& data,
-               AsterixStats& stats);
+               AsterixStatsData& stats);
 
        // --- FSPEC Octet 1 ---
        bool i048_010_presence{false};

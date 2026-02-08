@@ -29,7 +29,7 @@ namespace ReactorAsterix {
 
 bool Asterix002Report::process_all_octets(
         std::string_view fspec, std::string_view& data,
-        AsterixStats& /* stats*/)
+        AsterixStatsData& /* stats*/)
 {
     const uint8_t* raw = reinterpret_cast<const uint8_t*>(fspec.data());
     FastBitReader reader(raw);

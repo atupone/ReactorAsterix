@@ -33,6 +33,10 @@ namespace ReactorAsterix {
 thread_local AsterixStatsData AsterixPacketHandler::localStats{};
 thread_local uint32_t AsterixPacketHandler::packetCount = 0;
 
+AsterixPacketHandler::~AsterixPacketHandler() {
+    forceFlush();
+}
+
 /**
  * @brief Registers a handler for a specific ASTERIX category.
  * The handler is linked to the global stats object before ownership is transferred.
@@ -41,9 +45,6 @@ void AsterixPacketHandler::registerCategoryHandler(
         uint8_t category,
         std::unique_ptr<IAsterixCategoryHandler> handler) {
     if (!handler) return;
-
-    // Link the statistics object
-    handler->setStats(this->stats);
 
     // CHECK FOR EXISTING HANDLER (The "Reset" Logic)
     // If the lookup table already has a pointer for this category,
@@ -128,7 +129,10 @@ size_t AsterixPacketHandler::processDataBlock(
         struct timespec ts)
 {
     // Bounds check handled by caller (handlePacket), but double check for safety
-    if (block.size() < Constants::HEADER_SIZE) [[unlikely]] return 0;
+    if (block.size() < Constants::HEADER_SIZE) [[unlikely]] {
+        localStats.malformedBlocks++;
+        return 0;
+    }
 
     // Read the ASTERIX Category (CAT) and Length Indicator (LI)
     // from the current block
@@ -233,13 +237,23 @@ size_t AsterixPacketHandler::dispatchRecord(
 
     // Handlers should return 0 on failure, not throw exceptions.
     // Polymorphic call into the specific category handler logic.
-    size_t consumed = handler->processDataRecord(fspec, payload, ts);
+    size_t consumed = handler->processDataRecord(fspec, payload, ts, localStats);
 
-    if (consumed > 0) [[likely]] {
-        return fspecSize + consumed;
+    if (consumed == 0) [[unlikely]] {
+        localStats.recordParseErrors++;
+        return 0;
     }
 
-    return 0;
+    return fspecSize + consumed;
+}
+
+void AsterixPacketHandler::forceFlush() {
+    // Check if there is anything 'trapped' in the local counter
+    if (packetCount > 0) {
+        stats.merge(localStats);
+        localStats.reset();
+        packetCount = 0;
+    }
 }
 
 } // namespace ReactorAsterix

@@ -29,7 +29,7 @@ namespace ReactorAsterix {
 
 bool Asterix001Report::process_all_octets(
         std::string_view fspec, std::string_view& data,
-        AsterixStats& stats)
+        AsterixStatsData& stats)
 {
     const uint8_t* raw = reinterpret_cast<const uint8_t*>(fspec.data());
     FastBitReader reader(raw);
@@ -72,25 +72,25 @@ bool Asterix001Report::process_all_octets(
     }
 
     if (i001_020.typ) {
-        stats.uninterpretedItems.fetch_add(1, std::memory_order_relaxed);
+        stats.uninterpretedItems++;
     }
     if (i001_020.sim) {
-        stats.uninterpretedItems.fetch_add(1, std::memory_order_relaxed);
+        stats.uninterpretedItems++;
     }
     if (i001_020.rab) {
-        stats.uninterpretedItems.fetch_add(1, std::memory_order_relaxed);
+        stats.uninterpretedItems++;
     }
     if (i001_020.tst) {
-        stats.uninterpretedItems.fetch_add(1, std::memory_order_relaxed);
+        stats.uninterpretedItems++;
     }
     if (i001_020.me) {
-        stats.uninterpretedItems.fetch_add(1, std::memory_order_relaxed);
+        stats.uninterpretedItems++;
     }
     if (i001_020.mi) {
-        stats.uninterpretedItems.fetch_add(1, std::memory_order_relaxed);
+        stats.uninterpretedItems++;
     }
     if (i001_020.extra) {
-        stats.uninterpretedItems.fetch_add(1, std::memory_order_relaxed);
+        stats.uninterpretedItems++;
     }
 
     return true;

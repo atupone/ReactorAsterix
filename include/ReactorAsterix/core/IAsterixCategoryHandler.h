@@ -25,7 +25,7 @@
 
 namespace ReactorAsterix {
 
-    struct AsterixStats; // Forward declaration
+    struct AsterixStatsData; // Forward declaration
 
     /**
      * @class IAsterixCategoryHandler
@@ -44,9 +44,6 @@ namespace ReactorAsterix {
              */
             virtual ~IAsterixCategoryHandler() = default;
 
-            // New method to link stats to this handler
-            virtual void setStats(AsterixStats& stats) = 0;
-
             /**
              * @brief Handles the processing of a single ASTERIX data record.
              *
@@ -63,7 +60,8 @@ namespace ReactorAsterix {
             [[nodiscard]]virtual size_t processDataRecord(
                     std::string_view fspec,
                     std::string_view payload,
-                    struct timespec ts) = 0;
+                    struct timespec ts,
+                    AsterixStatsData& localStats) = 0;
     };
 
 } // namespace ReactorAsterix

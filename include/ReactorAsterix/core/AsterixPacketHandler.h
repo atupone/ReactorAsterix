@@ -43,6 +43,7 @@ namespace ReactorAsterix {
 class alignas(CacheLineSize) AsterixPacketHandler {
     public:
         AsterixPacketHandler() = default;
+        ~AsterixPacketHandler();
 
         // Delete copy/move to prevent accidental slicing or ownership issues
         // While unique_ptr makes it non-copyable naturally, explicit deletion
@@ -95,6 +96,8 @@ class alignas(CacheLineSize) AsterixPacketHandler {
          */
         [[nodiscard]] AsterixStatsData getStatsSnapshot() const { return stats.snapshot(); }
 
+        // Add a explicit flush method
+        void forceFlush();
     private:
         /**
          * @brief Internal logic to parse the ASTERIX Block header (CAT + LEN).

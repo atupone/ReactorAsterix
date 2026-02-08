@@ -29,7 +29,7 @@ namespace ReactorAsterix {
 
 bool Asterix048Report::process_all_octets(
         std::string_view fspec, std::string_view& data,
-        AsterixStats& stats)
+        AsterixStatsData& stats)
 {
     const uint8_t* raw = reinterpret_cast<const uint8_t*>(fspec.data());
     FastBitReader reader(raw);
@@ -86,7 +86,7 @@ bool Asterix048Report::process_all_octets(
 
     // 020 - Abnormal checks
     if (i048_020_presence && (i048_020.sim || i048_020.rab || i048_020.tst)) {
-        stats.uninterpretedItems.fetch_add(1, std::memory_order_relaxed);
+        stats.uninterpretedItems++;
         return false;
     }
 
