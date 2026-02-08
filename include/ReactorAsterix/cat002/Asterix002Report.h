@@ -22,6 +22,7 @@
 
 // System headers
 #include <string_view>
+#include <vector>
 
 // Library headers
 #include <ReactorAsterix/core/AsterixDiagnostics.h>
@@ -33,10 +34,12 @@ namespace ReactorAsterix {
  * @class Asterix002Report
  * @brief Container for decoded Category 002 data.
  */
-class Asterix002Report : public AsterixMessage {
+class Asterix002Report final : public AsterixMessage {
     public:
         Asterix002Report() = default;
         ~Asterix002Report() override = default;
+
+        auto get_schema();
 
         /**
          * Decodes Cat 002 fields using the recursive template schema.
@@ -50,27 +53,25 @@ class Asterix002Report : public AsterixMessage {
 
         // --- FSPEC Octet 1 ---
         I002_010_Handler i002_010;
-
         I002_000_Handler i002_000;
-
         I002_020_Handler i002_020;
-
         I002_030_Handler i002_030;
-
         I002_041_Handler i002_041;
-
         I002_050_Handler i002_050;
-
         I002_060_Handler i002_060;
 
         // --- FSPEC Octet 2 ---
         I002_070_Handler i002_070;
-
         I002_100_Handler i002_100;
-
         I002_090_Handler i002_090;
-
         I002_080_Handler i002_080;
+
+    private:
+        // Declare the static mask here
+        static std::vector<uint8_t> mandatory_mask;
+
+        // Helper to initialize it once
+        void init_mandatory_mask();
 };
 
 } // namespace ReactorAsterix

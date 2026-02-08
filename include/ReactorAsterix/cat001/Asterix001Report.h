@@ -22,6 +22,7 @@
 
 // System headers
 #include <string_view>
+#include <vector>
 
 // Library headers
 #include <ReactorAsterix/core/AsterixDiagnostics.h>
@@ -39,42 +40,45 @@ class Asterix001Report final : public AsterixMessage {
         Asterix001Report() = default;
         ~Asterix001Report() override = default;
 
-       bool process_all_octets(
-               std::string_view fspec, std::string_view& data,
-               AsterixStatsData& stats);
+        auto get_schema();
 
-       // --- FSPEC Octet 1 ---
-       I001_010_Handler i001_010;
+        /**
+         * Decodes Cat 001 fields using the recursive template schema.
+         */
+        bool process_all_octets(
+            std::string_view fspec,
+            std::string_view& data,
+            AsterixStatsData& stats);
 
-       I001_020_Handler i001_020;
+        // --- Data Items (Standard Cat 001) ---
 
-       I001_040_Handler i001_040;
+        // --- FSPEC Octet 1 ---
+        I001_010_Handler i001_010;
+        I001_020_Handler i001_020;
+        I001_040_Handler i001_040;
+        I001_070_Handler i001_070;
+        I001_090_Handler i001_090;
+        I001_130_Handler i001_130;
+        I001_141_Handler i001_141;
 
-       I001_070_Handler i001_070;
+        // --- FSPEC Octet 2 ---
+        I001_050_Handler i001_050;
+        I001_120_Handler i001_120;
+        I001_131_Handler i001_131;
+        I001_080_Handler i001_080;
+        I001_100_Handler i001_100;
+        I001_060_Handler i001_060;
+        I001_030_Handler i001_030;
 
-       I001_090_Handler i001_090;
+        // --- FSPEC Octet 3 ---
+        I001_150_Handler i001_150;
 
-       I001_130_Handler i001_130;
+    private:
+        // Declare the static mask here
+        static std::vector<uint8_t> mandatory_mask;
 
-       I001_141_Handler i001_141;
-
-       // --- FSPEC Octet 2 ---
-       I001_050_Handler i001_050;
-
-       I001_120_Handler i001_120;
-
-       I001_131_Handler i001_131;
-
-       I001_080_Handler i001_080;
-
-       I001_100_Handler i001_100;
-
-       I001_060_Handler i001_060;
-
-       I001_030_Handler i001_030;
-
-       // --- FSPEC Octet 3 ---
-       I001_150_Handler i001_150;
+        // Helper to initialize it once
+        void init_mandatory_mask();
 };
 
 } // namespace ReactorAsterix

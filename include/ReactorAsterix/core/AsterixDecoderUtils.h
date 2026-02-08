@@ -18,9 +18,10 @@
 #pragma once
 
 // System headers
-#include <tuple>
 #include <string_view>
+#include <tuple>
 #include <utility>
+#include <vector>
 
 // Own header
 #include <ReactorAsterix/core/FastBitReader.h>
@@ -31,10 +32,11 @@ namespace ReactorAsterix {
 /**
  * A "No-Op" item used to pad FSPEC octets
  */
-class DummyItem : AsterixDataItemHandlerBase {
-    size_t getSize(std::string_view) const override {
-        return 0;
-    }
+class DummyItem : public AsterixDataItemHandlerBase {
+    public:
+        size_t getSize(std::string_view) const override {
+            return 0;
+        }
 };
 
 // Static instances for padding
@@ -99,6 +101,33 @@ template <size_t I = 0, typename... Octets>
             return true;
         }
     }
+
+/**
+ * Helper to unpack an octet tuple and calculate the mandatory mask.
+ * This replaces the inner std::apply to simplify template deduction.
+ */
+template <typename Octet, size_t... Is>
+void process_octet_impl(const Octet& octet, std::vector<uint8_t>& mask, std::index_sequence<Is...>) {
+    uint8_t m = 0;
+    int bit = 7;
+    // Use a fold expression with std::get to bypass std::apply deduction issues
+    ((m = static_cast<uint8_t>(m | (static_cast<uint8_t>(std::get<Is>(octet).isMandatory()) << bit--))), ...);
+    mask.push_back(m);
+}
+
+template <typename Octet>
+void process_octet_mandatory(const Octet& octet, std::vector<uint8_t>& mask) {
+    process_octet_impl(octet, mask, std::make_index_sequence<std::tuple_size_v<Octet>>{});
+}
+
+template <typename SchemaTuple>
+void fill_mandatory_mask(SchemaTuple& schema, std::vector<uint8_t>& mask) {
+    mask.clear();
+    // Explicitly iterate over the outer tuple (the octets)
+    std::apply([&](auto&&... octets) {
+        (process_octet_mandatory(octets, mask), ...);
+    }, schema);
+}
 
 } // namespace ReactorAsterix
 

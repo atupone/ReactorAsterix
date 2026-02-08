@@ -27,6 +27,24 @@
 
 namespace ReactorAsterix {
 
+// Define the static member (required in C++)
+std::vector<uint8_t> Asterix034Report::mandatory_mask;
+
+auto Asterix034Report::get_schema() {
+    return std::make_tuple(
+        std::tie(i034_010, i034_000, i034_030, i034_020, i034_041, i034_050, i034_060),
+        std::tie(i034_070, i034_100, i034_110, i034_120, i034_090)
+    );
+}
+
+void Asterix034Report::init_mandatory_mask() {
+    if (!mandatory_mask.empty()) return;
+
+    auto schema = get_schema();
+
+    fill_mandatory_mask(schema, mandatory_mask);
+}
+
 bool Asterix034Report::process_all_octets(
         std::string_view fspec, std::string_view& data,
         AsterixStatsData& /*stats*/)
@@ -36,26 +54,32 @@ bool Asterix034Report::process_all_octets(
     int bit = 7; // Start at MSB
 
     // Declarative Schema: tuple to match ASTERIX FSPEC layout
-    auto schema = std::make_tuple(
-        // Octet 1
-        std::tie(
-            i034_010,
-            i034_000,
-            i034_030,
-            i034_020,
-            i034_041,
-            i034_050,
-            i034_060),
-        // Octet 2
-        std::tie(
-            i034_070,
-            i034_100,
-            i034_110,
-            i034_120,
-            i034_090)
-    );
+    auto schema = get_schema();
 
-    if (!decode_fspec_recursive(reader, bit, data, schema)) return false;
+    // Decode using schema
+    if (!decode_fspec_recursive(reader, bit, data, schema)) {
+        return false;
+    }
+
+    // Fast Mandatory Validation
+    for (size_t i = 0; i < mandatory_mask.size(); ++i) {
+        uint8_t required = mandatory_mask[i];
+        if (required == 0) continue; // No mandatory items in this octet
+
+        // If the FSPEC is shorter than our mandatory mask, check if the
+        // missing octets actually required anything.
+        if (i >= fspec.size()) {
+            return false; // Expected mandatory fields in octet i, but FSPEC ended
+        }
+
+        uint8_t actual = static_cast<uint8_t>(fspec[i]);
+
+        // Standard ASTERIX bitwise check: (Required bits) AND NOT (Received bits)
+        // If the result is non-zero, it means a bit set in 'required' was 0 in 'actual'.
+        if ((required & ~actual) != 0) {
+            return false;
+        }
+    }
 
     // 010 - Source ID side effect
     if (i034_010.presence) {

@@ -21,12 +21,11 @@
 #include <ReactorAsterix/core/AsterixMessage.h>
 
 // System headers
-#include <cstdint>
 #include <string_view>
+#include <vector>
 
 // Library headers
 #include <ReactorAsterix/core/AsterixDiagnostics.h>
-#include <ReactorAsterix/core/FastBitReader.h>
 #include <ReactorAsterix/cat048/Asterix048DataItemCollection.h>
 
 namespace ReactorAsterix {
@@ -41,66 +40,59 @@ class Asterix048Report final : public AsterixMessage {
        Asterix048Report() = default;
        ~Asterix048Report() override = default;
 
-       bool process_all_octets(
-               std::string_view fspec, std::string_view& data,
-               AsterixStatsData& stats);
+        auto get_schema();
 
-       // --- FSPEC Octet 1 ---
+        /**
+         * Decodes Cat 001 fields using the recursive template schema.
+         */
+        bool process_all_octets(
+            std::string_view fspec,
+            std::string_view& data,
+            AsterixStatsData& stats);
+
+        // --- Data Items (Standard Cat 048) ---
+
+        // --- FSPEC Octet 1 ---
        I048_010_Handler i048_010;
-
        I048_140_Handler i048_140;
-
        I048_020_Handler i048_020;
-
        I048_040_Handler i048_040;
-
        I048_070_Handler i048_070;
-
        I048_090_Handler i048_090;
-
        I048_130_Handler i048_130;
 
-       // --- FSPEC Octet 2 ---
+        // --- FSPEC Octet 2 ---
        I048_220_Handler i048_220;
-
        I048_240_Handler i048_240;
-
        I048_250_Handler i048_250;
-
        I048_161_Handler i048_161;
-
        I048_042_Handler i048_042;
-
        I048_200_Handler i048_200;
-
        I048_170_Handler i048_170;
 
-       // --- FSPEC Octet 3 ---
+        // --- FSPEC Octet 3 ---
        I048_210_Handler i048_210;
-
        I048_030_Handler i048_030;
-
        I048_080_Handler i048_080;
-
        I048_100_Handler i048_100;
-
        I048_110_Handler i048_110;
-
        I048_120_Handler i048_120;
-
        I048_230_Handler i048_230;
 
        // --- FSPEC Octet 4 ---
        I048_260_Handler i048_260;
-
        I048_055_Handler i048_055;
-
        I048_050_Handler i048_050;
-
        I048_065_Handler i048_065;
-
        I048_060_Handler i048_060;
-    };
+
+    private:
+        // Declare the static mask here
+        static std::vector<uint8_t> mandatory_mask;
+
+        // Helper to initialize it once
+        void init_mandatory_mask();
+};
 
 } // namespace ReactorAsterix
 
