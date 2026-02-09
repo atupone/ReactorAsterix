@@ -18,7 +18,7 @@
 #pragma once
 
 // Inherits from
-#include <ReactorAsterix/core/AsterixReport.h>
+#include <ReactorAsterix/core/AsterixMessage.h>
 
 // System headers
 #include <string_view>
@@ -26,47 +26,36 @@
 
 // Library headers
 #include <ReactorAsterix/core/AsterixDiagnostics.h>
-#include <ReactorAsterix/cat002/Asterix002DataItemCollection.h>
 
 namespace ReactorAsterix {
 
 /**
- * @class Asterix002Report
- * @brief Container for decoded Category 002 data.
+ * @class AsterixReport
+ * @brief Container for decoded Category data.
  * The client is responsible for converting these values into physical coordinates.
  */
-class Asterix002Report final : public AsterixReport {
+class AsterixReport : public AsterixMessage {
     public:
-        Asterix002Report();
-        ~Asterix002Report() override = default;
-
-        auto get_schema();
-
         /**
-         * Decodes Cat 002 fields using the recursive template schema.
+         * Decodes Cat fields using the recursive template schema.
          */
-        bool process_all_octets(
+        virtual bool process_all_octets(
             std::string_view fspec,
             std::string_view& data,
-            AsterixStatsData& stats);
+            AsterixStatsData& stats) = 0;
 
-        // --- Data Items (Standard Cat 002) ---
+    protected:
+        /**
+         * @brief Check if the received FSPEC is long enough.
+         * @param fspec The FSPEC from the data stream.
+         * @param min_required The pre-calculated minimum length for this category.
+         */
+        bool is_fspec_complete(std::string_view fspec, size_t min_required) const {
+            return fspec.size() >= min_required;
+        }
 
-        // --- FSPEC Octet 1 ---
-        I002_010_Handler i002_010;
-        I002_000_Handler i002_000;
-        I002_020_Handler i002_020;
-        I002_030_Handler i002_030;
-        I002_041_Handler i002_041;
-        I002_050_Handler i002_050;
-        I002_060_Handler i002_060;
-
-        // --- FSPEC Octet 2 ---
-        I002_070_Handler i002_070;
-        I002_100_Handler i002_100;
-        I002_090_Handler i002_090;
-        I002_080_Handler i002_080;
-
+        static size_t min_fspec_len;
+        static bool initialized;
 };
 
 } // namespace ReactorAsterix

@@ -150,11 +150,6 @@ class AsterixCategoryHandler : public IAsterixCategoryHandler {
             report.manager = sourceStateManager.get();
 
             // Validation logic
-            if (!checkMandatoryItems(fspec)) [[unlikely]] {
-                localStats.protocolViolations++;
-                return 0;
-            }
-
             if (!checkAllHandlersSupported(fspec)) [[unlikely]] {
                 localStats.unhandledItems++;
                 return 0;

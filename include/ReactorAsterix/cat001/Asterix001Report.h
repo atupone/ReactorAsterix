@@ -18,7 +18,7 @@
 #pragma once
 
 // Inherits from
-#include <ReactorAsterix/core/AsterixMessage.h>
+#include <ReactorAsterix/core/AsterixReport.h>
 
 // System headers
 #include <string_view>
@@ -35,9 +35,9 @@ namespace ReactorAsterix {
  * @brief Container for decoded Category 001 data.
  * The client is responsible for converting these values into physical coordinates.
  */
-class Asterix001Report final : public AsterixMessage {
+class Asterix001Report final : public AsterixReport {
     public:
-        Asterix001Report() = default;
+        Asterix001Report();
         ~Asterix001Report() override = default;
 
         auto get_schema();
@@ -72,13 +72,6 @@ class Asterix001Report final : public AsterixMessage {
 
         // --- FSPEC Octet 3 ---
         I001_150_Handler i001_150;
-
-    private:
-        // Declare the static mask here
-        static std::vector<uint8_t> mandatory_mask;
-
-        // Helper to initialize it once
-        void init_mandatory_mask();
 };
 
 } // namespace ReactorAsterix

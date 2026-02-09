@@ -44,12 +44,17 @@ class DummyItem : public AsterixDataItemHandlerBase {
 [[maybe_unused]] static bool dummy_presence;
 
 template <typename T>
-    bool decode_item(FastBitReader& reader, int& bit, T& item, std::string_view& data) {
+    bool decode_item(FastBitReader& reader, int& bit, T& item, std::string_view& data, AsterixStatsData& stats) {
         // Read the bit from the FSPEC and store it directly in the handler's presence flag
         item.presence = reader.readBit(bit);
 
         // If the bit is 0, the item is not in this record; move to the next item
-        if (!item.presence) return true;
+        if (!item.presence) {
+            if (item.isMandatory()) {
+                stats.protocolViolations++;
+            }
+            return true;
+        }
 
         auto itemSize = item.getSize(data);
         if (itemSize > data.size()) [[unlikely]] {
@@ -67,6 +72,7 @@ template <size_t I = 0, typename... Octets>
             FastBitReader& reader,
             int& bit,
             std::string_view& data,
+            AsterixStatsData &stats,
             std::tuple<Octets...>& schema)
     {
         if constexpr (I >= sizeof...(Octets)) {
@@ -79,7 +85,7 @@ template <size_t I = 0, typename... Octets>
 
             // Decode available fields
             bool success = std::apply([&](auto&... items) {
-                    return (decode_item(reader, bit, items, data) && ...);
+                    return (decode_item(reader, bit, items, data, stats) && ...);
                     }, current_octet);
 
             if (!success) return false;
@@ -94,7 +100,7 @@ template <size_t I = 0, typename... Octets>
 
             if (has_extension) {
                 if constexpr (I + 1 < sizeof...(Octets)) {
-                    return decode_fspec_recursive<I + 1>(reader, bit, data, schema);
+                    return decode_fspec_recursive<I + 1>(reader, bit, data, stats, schema);
                 }
             }
 
@@ -127,6 +133,28 @@ void fill_mandatory_mask(SchemaTuple& schema, std::vector<uint8_t>& mask) {
     std::apply([&](auto&&... octets) {
         (process_octet_mandatory(octets, mask), ...);
     }, schema);
+}
+
+/**
+ * @brief Calculates the minimum number of FSPEC octets required
+ * to reach the last mandatory field in the schema.
+ */
+template <typename SchemaTuple>
+size_t get_min_fspec_length(SchemaTuple& schema) {
+    size_t min_length = 0;
+    size_t current_octet_idx = 0;
+
+    std::apply([&](auto&&... octets) {
+        (std::apply([&](auto&&... items) {
+            current_octet_idx++;
+            // If any item in this octet is mandatory, update the minimum length
+            if ((items.isMandatory() || ...)) {
+                min_length = current_octet_idx;
+            }
+        }, octets), ...);
+    }, schema);
+
+    return min_length;
 }
 
 } // namespace ReactorAsterix

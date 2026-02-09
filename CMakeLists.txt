@@ -69,6 +69,7 @@ set(LIB_HEADERS
     include/ReactorAsterix/core/AsterixDiagnostics.h
     include/ReactorAsterix/core/AsterixMessage.h
     include/ReactorAsterix/core/AsterixPacketHandler.h
+    include/ReactorAsterix/core/AsterixReport.h
     include/ReactorAsterix/core/IAsterixCategoryHandler.h
     include/ReactorAsterix/core/IAsterixDataItemHandler.h
     include/ReactorAsterix/core/SourceIdentifier.h
@@ -93,6 +94,7 @@ set(LIB_HEADERS
 
 set(LIB_SOURCES
     src/core/AsterixPacketHandler.cc
+    src/core/AsterixReport.cc
     src/cat001/Asterix001DataItemCollection.cc
     src/cat001/Asterix001Handler.cc
     src/cat001/Asterix001Report.cc

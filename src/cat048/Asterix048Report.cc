@@ -27,9 +27,6 @@
 
 namespace ReactorAsterix {
 
-// Define the static member (required in C++)
-std::vector<uint8_t> Asterix048Report::mandatory_mask;
-
 auto Asterix048Report::get_schema() {
     return std::make_tuple(
         std::tie(i048_010, i048_140, i048_020, i048_040, i048_070, i048_090, i048_130),
@@ -39,12 +36,12 @@ auto Asterix048Report::get_schema() {
     );
 }
 
-void Asterix048Report::init_mandatory_mask() {
-    if (!mandatory_mask.empty()) return;
-
-    auto schema = get_schema();
-
-    fill_mandatory_mask(schema, mandatory_mask);
+Asterix048Report::Asterix048Report() {
+    if (!initialized) {
+        auto schema = get_schema();
+        min_fspec_len = get_min_fspec_length(schema);
+        initialized = true;
+    }
 }
 
 bool Asterix048Report::process_all_octets(
@@ -58,29 +55,13 @@ bool Asterix048Report::process_all_octets(
     // Declarative Schema: tuple to match ASTERIX FSPEC layout
     auto schema = get_schema();
 
-    // Decode using schema
-    if (!decode_fspec_recursive(reader, bit, data, schema)) {
-        return false;
+    if (!is_fspec_complete(fspec, min_fspec_len)) {
+        stats.protocolViolations++;
     }
 
-    // Fast Mandatory Validation
-    for (size_t i = 0; i < mandatory_mask.size(); ++i) {
-        uint8_t required = mandatory_mask[i];
-        if (required == 0) continue; // No mandatory items in this octet
-
-        // If the FSPEC is shorter than our mandatory mask, check if the
-        // missing octets actually required anything.
-        if (i >= fspec.size()) {
-            return false; // Expected mandatory fields in octet i, but FSPEC ended
-        }
-
-        uint8_t actual = static_cast<uint8_t>(fspec[i]);
-
-        // Standard ASTERIX bitwise check: (Required bits) AND NOT (Received bits)
-        // If the result is non-zero, it means a bit set in 'required' was 0 in 'actual'.
-        if ((required & ~actual) != 0) {
-            return false;
-        }
+    // Decode using schema
+    if (!decode_fspec_recursive(reader, bit, data, stats, schema)) {
+        return false;
     }
 
     // 010 - Source ID side effect

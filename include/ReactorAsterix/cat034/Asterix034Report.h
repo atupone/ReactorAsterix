@@ -18,7 +18,7 @@
 #pragma once
 
 // Inherits from
-#include <ReactorAsterix/core/AsterixMessage.h>
+#include <ReactorAsterix/core/AsterixReport.h>
 
 // System headers
 #include <string_view>
@@ -35,9 +35,9 @@ namespace ReactorAsterix {
  * @brief Container for decoded Category 034 data.
  * The client is responsible for converting these values into physical coordinates.
  */
-class Asterix034Report final : public AsterixMessage {
+class Asterix034Report final : public AsterixReport {
     public:
-        Asterix034Report() = default;
+        Asterix034Report();
         ~Asterix034Report() override = default;
 
         auto get_schema();
@@ -68,12 +68,6 @@ class Asterix034Report final : public AsterixMessage {
         I034_120_Handler i034_120; // 3D Radar Position
         I034_090_Handler i034_090; // Collimation Error
 
-    private:
-        // Declare the static mask here
-        static std::vector<uint8_t> mandatory_mask;
-
-        // Helper to initialize it once
-        void init_mandatory_mask();
 };
 
 } // namespace ReactorAsterix
