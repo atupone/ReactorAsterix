@@ -37,42 +37,7 @@ class Asterix048Handler final
         // This line is essential for CRTP to work with private members:
         friend class AsterixCategoryHandler<Asterix048Report, IAsterix048Listener, Asterix048Handler>;
     public:
-        using HandlerTypes = std::tuple<
-            I048_010_Handler,
-            I048_140_Handler,
-            I048_020_Handler,
-            I048_040_Handler,
-            I048_070_Handler,
-            I048_090_Handler,
-            I048_130_Handler,
-            I048_220_Handler,
-            I048_240_Handler,
-            I048_250_Handler,
-            I048_161_Handler,
-            I048_042_Handler,
-            I048_200_Handler,
-            I048_170_Handler,
-            I048_210_Handler,
-            I048_030_Handler,
-            I048_080_Handler,
-            I048_100_Handler,
-            I048_110_Handler,
-            I048_120_Handler,
-            I048_230_Handler,
-            I048_260_Handler,
-            I048_055_Handler,
-            I048_050_Handler,
-            I048_065_Handler,
-            I048_060_Handler
-        >;
-
         static constexpr uint8_t Category = 48;
-
-        // Define the F-Spec bitmasks as static constexpr
-        // These are computed once at compile time based on the handler types
-        static constexpr auto supportedFspec_ = FspecBuilder<HandlerTypes>::buildSupported();
-
-        static constexpr auto mandatoryFspec_ = FspecBuilder<HandlerTypes>::buildMandatory();
 
         /**
          * @brief Constructor that initializes the data item handlers.
@@ -88,9 +53,6 @@ class Asterix048Handler final
 
         // C++17 Reader-Writer Lock
         mutable std::shared_mutex listenerMutex;
-
-        // --- Data Item Handlers (Statically Named) ---
-        HandlerTypes m_handlers;
 };
 
 } // namespace ReactorAsterix

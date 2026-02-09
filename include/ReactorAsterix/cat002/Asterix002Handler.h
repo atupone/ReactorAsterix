@@ -38,22 +38,7 @@ class Asterix002Handler final
         // This line is essential for CRTP to work with private members:
         friend class AsterixCategoryHandler<Asterix002Report, IAsterix002Listener, Asterix002Handler>;
 
-        using HandlerTypes = std::tuple<
-            I002_010_Handler,
-            I002_000_Handler,
-            I002_020_Handler,
-            I002_030_Handler,
-            I002_041_Handler,
-            I002_050_Handler
-        >;
-
         static constexpr uint8_t Category = 2;
-
-        // Define the F-Spec bitmasks as static constexpr
-        // These are computed once at compile time based on the handler types
-        static constexpr auto supportedFspec_ = FspecBuilder<HandlerTypes>::buildSupported();
-
-        static constexpr auto mandatoryFspec_ = FspecBuilder<HandlerTypes>::buildMandatory();
 
         /**
          * @brief Constructor that initializes the data item handlers.
@@ -70,9 +55,6 @@ class Asterix002Handler final
 
         // C++17 Reader-Writer Lock
         mutable std::shared_mutex listenerMutex;
-
-        // --- Data Item Handlers (Statically Named) ---
-        HandlerTypes m_handlers;
 };
 
 } // namespace ReactorAsterix

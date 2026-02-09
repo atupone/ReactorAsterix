@@ -31,6 +31,8 @@ namespace ReactorAsterix {
 
 /**
  * A "No-Op" item used to pad FSPEC octets
+ * If this item is present in the bitstream, it means the sender
+ * included a field we did not foresee in our schema.
  */
 class DummyItem : public AsterixDataItemHandlerBase {
     public:
@@ -54,6 +56,12 @@ template <typename T>
                 stats.protocolViolations++;
             }
             return true;
+        }
+
+        // Check if we just read a '1' for a DummyItem
+        if constexpr (std::is_same_v<std::decay_t<T>, DummyItem>) {
+            stats.protocolViolations++;
+            return false; // STOP DECODING: Unforeseen item encountered
         }
 
         auto itemSize = item.getSize(data);
@@ -81,7 +89,7 @@ template <size_t I = 0, typename... Octets>
             const auto& current_octet = std::get<I>(schema);
             constexpr size_t num_fields = std::tuple_size_v<std::decay_t<decltype(current_octet)>>;
 
-            static_assert(num_fields <= 7, "An ASTERIX FSPEC octet cannot have more than 7 data fields.");
+            static_assert(num_fields == 7, "An ASTERIX FSPEC octet should have 7 data fields.");
 
             // Decode available fields
             bool success = std::apply([&](auto&... items) {
@@ -101,6 +109,10 @@ template <size_t I = 0, typename... Octets>
             if (has_extension) {
                 if constexpr (I + 1 < sizeof...(Octets)) {
                     return decode_fspec_recursive<I + 1>(reader, bit, data, stats, schema);
+                } else {
+                    // The sender sent an extra octet we don't have in our schema
+                    stats.protocolViolations++;
+                    return false; // STOP DECODING
                 }
             }
 

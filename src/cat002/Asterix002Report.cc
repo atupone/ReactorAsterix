@@ -30,7 +30,7 @@ namespace ReactorAsterix {
 auto Asterix002Report::get_schema() {
     return std::make_tuple(
         std::tie(i002_010, i002_000, i002_020, i002_030, i002_041, i002_050, i002_060),
-        std::tie(i002_070, i002_100, i002_090, i002_080)
+        std::tie(i002_070, i002_100, i002_090, i002_080, dummy,    dummy,    dummy)
     );
 }
 

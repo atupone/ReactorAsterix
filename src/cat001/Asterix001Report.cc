@@ -31,7 +31,7 @@ auto Asterix001Report::get_schema() {
     return std::make_tuple(
         std::tie(i001_010, i001_020, i001_040, i001_070, i001_090, i001_130, i001_141),
         std::tie(i001_050, i001_120, i001_131, i001_080, i001_100, i001_060, i001_030),
-        std::tie(i001_150)
+        std::tie(i001_150, dummy,    dummy,     dummy,   dummy,    dummy,    dummy)
     );
 }
 

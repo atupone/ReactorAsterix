@@ -22,57 +22,15 @@
 
 // System headers
 #include <algorithm>
-#include <array>
 #include <memory>
 #include <mutex>
 #include <vector>
-#include <iostream>
 
 // Libray headers
-#include <ReactorAsterix/core/IAsterixDataItemHandler.h>
 #include <ReactorAsterix/core/AsterixDiagnostics.h>
-#include <ReactorAsterix/core/AsterixMessage.h>
+#include <ReactorAsterix/core/SourceStateManager.h>
 
 namespace ReactorAsterix {
-
-template <typename Tuple>
-struct FspecBuilder;
-
-// Compute F-Specs at Compile Time
-template<typename... Handlers>
-constexpr std::array<uint8_t, 20> buildSupportedFspec() {
-    std::array<uint8_t, 20> fspec{};
-    // Fold expression to set bits for each handler
-    ((fspec[(Handlers::FRN - 1) / 7] |= (1 << (7 - ((Handlers::FRN - 1) % 7)))), ...);
-    return fspec;
-}
-
-template <typename... Handlers>
-struct FspecBuilder<std::tuple<Handlers...>> {
-    // Builds mask for ALL supported handlers
-    static constexpr auto buildSupported() {
-        // This calls your existing buildSupportedFspec using the unpacked types
-        return buildSupportedFspec<Handlers...>();
-    }
-
-    // Builds mask ONLY for handlers where 'mandatory' is true
-    static constexpr auto buildMandatory() {
-        std::array<uint8_t, 20> mask = {0};
-
-        // Use a fold expression to check each handler's static 'mandatory' property
-        // Note: You need to add 'static constexpr bool mandatory' to your handler classes
-        ((Handlers::mandatory ? applyBit(mask, Handlers::FRN) : void()), ...);
-
-        return mask;
-    }
-
-    private:
-        static constexpr void applyBit(std::array<uint8_t, 20>& mask, uint8_t frn) {
-            size_t byteIndex = static_cast<size_t>((frn - 1) / 7);
-            int bitIndex  = 7 - ((frn - 1) % 7);
-            mask[byteIndex] |= static_cast<uint8_t>(1 << bitIndex);
-        }
-};
 
 /**
  * @class AsterixCategoryHandler
@@ -149,12 +107,6 @@ class AsterixCategoryHandler : public IAsterixCategoryHandler {
             // Unified Assignment: Works for all Categories
             report.manager = sourceStateManager.get();
 
-            // Validation logic
-            if (!checkAllHandlersSupported(fspec)) [[unlikely]] {
-                localStats.unhandledItems++;
-                return 0;
-            }
-
             std::string_view data = payload;
 
             bool result = report.process_all_octets(fspec, data, localStats);
@@ -228,70 +180,7 @@ class AsterixCategoryHandler : public IAsterixCategoryHandler {
             return static_cast<uint32_t>(corrected);
         }
 
-        /**
-         * @brief Checks if any bit is set in the received FSPEC for which
-         * we do NOT have a registered handler.
-         */
-        bool checkAllHandlersSupported(std::string_view fspec) const {
-            // Access the static constant from the specific subclass (e.g., Asterix1Handler)
-            const auto& supported = Derived::supportedFspec_;
-
-            for (size_t i = 0; i < fspec.size(); ++i) {
-                uint8_t received = static_cast<uint8_t>(fspec[i]);
-
-                // If the received FSPEC is longer than our mask, any bit set
-                // in the extra bytes is unsupported by definition.
-                uint8_t mask = (i < supported.size()) ? supported[i] : 0;
-
-                // bits set in received but NOT in supported mask
-                uint8_t unsupportedBits = (received & ~mask) & 0xFE;
-
-                // (received & ~mask) identifies bits set that we don't support.
-                // We & with 0xFE to ignore the FX (extension) bit.
-                if (unsupportedBits) {
-                    // Logic to identify the FRN:
-                    for (uint8_t bit = 0; bit < 7; ++bit) {
-                        if (unsupportedBits & (0x80 >> bit)) {
-                            size_t missingFrn = (i * 7) + static_cast<size_t>(bit + 1);
-                            std::cerr << "[Asterix] Category " << (int)Derived::Category
-                                << " - Missing handler for FRN " << missingFrn << std::endl;
-                        }
-                    }
-                    return false;
-                }
-            }
-            return true;
-        }
-
         std::shared_ptr<SourceStateManager> sourceStateManager;
-
-        /**
-         * @brief Maximum Field Record Number supported in the flat array.
-         * 128 covers all standard ASTERIX categories (max ~70-80 FRNs).
-         */
-        static constexpr size_t MAX_FRNS = 128;
-
-        [[nodiscard]]bool checkMandatoryItems(std::string_view fspec) const {
-            // Access the constant from the specific subclass (e.g., Asterix1Handler)
-            const auto& mandatory = Derived::mandatoryFspec_;
-
-            const size_t bytesToCheck = std::min(fspec.size(), mandatory.size());
-            for (size_t i = 0; i < bytesToCheck; ++i) {
-                if ((static_cast<uint8_t>(fspec[i]) & mandatory[i]) != mandatory[i]) {
-                    return false;
-                }
-            }
-
-            if (fspec.size() < mandatory.size()) {
-                for (size_t i = fspec.size(); i < mandatory.size(); ++i) {
-                    if (mandatory[i] != 0) {
-                        return false; // A mandatory bit exists beyond the provided FSPEC
-                    }
-                }
-            }
-
-            return true;
-        };
 
         // This allows derived classes (Cat001, Cat002) to get the snapshot
         std::shared_ptr<ListenerList> getListeners() const {
