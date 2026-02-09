@@ -100,7 +100,8 @@ class AsterixCategoryHandler : public IAsterixCategoryHandler {
                 struct timespec ts,
                 AsterixStatsData& localStats) override {
             // Initialize Report (Type T is Asterix1Report, Asterix2Report, etc.)
-            T report;
+            static thread_local T report;
+            report.reset();
 
             // Common Logic Hoisted: Every report gets the manager reference
             // This assumes 'T' (the report) has a 'manager' field

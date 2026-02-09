@@ -93,6 +93,7 @@ set(LIB_HEADERS
 )
 
 set(LIB_SOURCES
+    src/core/AsterixMessage.cc
     src/core/AsterixPacketHandler.cc
     src/core/AsterixReport.cc
     src/cat001/Asterix001DataItemCollection.cc

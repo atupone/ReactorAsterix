@@ -97,6 +97,21 @@ void I001_020_Handler::decode(std::string_view data) {
     }
 }
 
+void I001_020_Handler::reset() {
+    AsterixDataItemHandlerExtendedLength::reset();
+    typ = false;
+    sim = false;
+    ssrpsr = SSRPSR_T::NO_DETECTION;
+    ant = false;
+    spi = false;
+    rab = false;
+    tst = false;
+    ds1ds2 = DS1DS2_T::DEFAULT;
+    me = false;
+    mi = false;
+    extra = false;
+}
+
 // ----------------------------------------------------------------------------------
 
 /**

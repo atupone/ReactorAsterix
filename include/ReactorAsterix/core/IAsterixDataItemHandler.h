@@ -91,7 +91,7 @@ class IAsterixDataItemHandler {
         virtual std::string_view getName() const = 0;
 
         // Helper to clear state before decoding a new record
-        virtual void reset() {
+        void reset() {
             presence = false;
         }
 };

@@ -100,6 +100,7 @@ class I048_020_Handler final : public AsterixDataItemHandlerExtendedLength {
          * @param data The raw data buffer.
          */
         void decode(std::string_view data) override;
+        void reset();
 
         // Enumeration for TYP
         enum class TYP_T : uint8_t {

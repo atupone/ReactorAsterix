@@ -37,6 +37,8 @@ class AsterixMessage {
         AsterixMessage() = default;
         virtual ~AsterixMessage() = default;
 
+        void reset();
+
         // Temporary link to the manager, set by the Handler at creation
         SourceStateManager* manager = nullptr;
 

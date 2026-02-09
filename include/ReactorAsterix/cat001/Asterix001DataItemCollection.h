@@ -79,6 +79,8 @@ class I001_020_Handler final : public AsterixDataItemHandlerExtendedLength {
          */
         void decode(std::string_view data) override;
 
+        void reset();
+
         // Enumeration for SSR/PSR
         enum class SSRPSR_T : uint8_t {
             NO_DETECTION = 0,

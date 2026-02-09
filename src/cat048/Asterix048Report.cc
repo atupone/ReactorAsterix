@@ -76,7 +76,42 @@ bool Asterix048Report::process_all_octets(
     }
 
     return true;
-};
+}
+
+void Asterix048Report::reset() {
+    // Reset common base fields (SourceIdentifier, TOD, etc.)
+    AsterixReport::reset();
+
+    i048_010.reset();
+    i048_140.reset();
+    i048_020.reset();
+    i048_040.reset();
+    i048_070.reset();
+    i048_090.reset();
+    i048_130.reset();
+
+    i048_220.reset();
+    i048_240.reset();
+    i048_250.reset();
+    i048_161.reset();
+    i048_042.reset();
+    i048_200.reset();
+    i048_170.reset();
+
+    i048_210.reset();
+    i048_030.reset();
+    i048_080.reset();
+    i048_100.reset();
+    i048_110.reset();
+    i048_120.reset();
+    i048_230.reset();
+
+    i048_260.reset();
+    i048_055.reset();
+    i048_050.reset();
+    i048_065.reset();
+    i048_060.reset();
+}
 
 } // namespace ReactorAsterix
 

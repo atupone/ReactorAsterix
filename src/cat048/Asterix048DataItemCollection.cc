@@ -105,6 +105,16 @@ void I048_020_Handler::decode(std::string_view data) {
     }
 }
 
+void I048_020_Handler::reset() {
+    AsterixDataItemHandlerExtendedLength::reset();
+    typ = TYP_T::NO_DETECTION;
+    sim = false;
+    spi = false;
+    rab = false;
+    tst = false;
+    me  = false;
+}
+
 // ----------------------------------------------------------------------------------
 
 /**

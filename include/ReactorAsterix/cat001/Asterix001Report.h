@@ -50,6 +50,8 @@ class Asterix001Report final : public AsterixReport {
             std::string_view& data,
             AsterixStatsData& stats);
 
+        void reset();
+
         // --- Data Items (Standard Cat 001) ---
 
         // --- FSPEC Octet 1 ---
