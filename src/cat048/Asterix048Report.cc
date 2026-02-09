@@ -27,40 +27,44 @@
 
 namespace ReactorAsterix {
 
-auto Asterix048Report::get_schema() {
-    return std::make_tuple(
-        std::tie(i048_010, i048_140, i048_020, i048_040, i048_070, i048_090, i048_130),
-        std::tie(i048_220, i048_240, i048_250, i048_161, i048_042, i048_200, i048_170),
-        std::tie(i048_210, i048_030, i048_080, i048_100, i048_110, i048_120, i048_230),
-        std::tie(i048_260, i048_055, i048_050, i048_065, i048_060, dummy,    dummy)
-    );
-}
-
-Asterix048Report::Asterix048Report() {
-    if (!initialized) {
-        auto schema = get_schema();
-        min_fspec_len = get_min_fspec_length(schema);
-        initialized = true;
-    }
-}
-
-bool Asterix048Report::process_all_octets(
-        std::string_view fspec, std::string_view& data,
+bool Asterix048Report::decode_fspec(
+        std::string_view fspec,
+        std::string_view& data,
         AsterixStatsData& stats)
 {
     const uint8_t* raw = reinterpret_cast<const uint8_t*>(fspec.data());
     FastBitReader reader(raw);
     int bit = 7; // Start at MSB
 
-    // Declarative Schema: tuple to match ASTERIX FSPEC layout
-    auto schema = get_schema();
+    // --- Octet 1 ---
+    auto octet1 = std::tie(i048_010, i048_140, i048_020, i048_040, i048_070, i048_090, i048_130);
+    if (!decode_octet_inline(reader, bit, octet1, data, stats)) return false;
+    if (!reader.readBit(bit)) return true; // FX bit: if 0, we are done
 
-    if (!is_fspec_complete(fspec, min_fspec_len)) {
-        stats.protocolViolations++;
-    }
+    // --- Octet 2 ---
+    auto octet2 = std::tie(i048_220, i048_240, i048_250, i048_161, i048_042, i048_200, i048_170);
+    if (!decode_octet_inline(reader, bit, octet2, data, stats)) return false;
+    if (!reader.readBit(bit)) return true; // FX bit: if 0, we are done
 
-    // Decode using schema
-    if (!decode_fspec_recursive(reader, bit, data, stats, schema)) {
+    // --- Octet 3 ---
+    auto octet3 = std::tie(i048_210, i048_030, i048_080, i048_100, i048_110, i048_120, i048_230);
+    if (!decode_octet_inline(reader, bit, octet3, data, stats)) return false;
+    if (!reader.readBit(bit)) return true; // FX bit: if 0, we are done
+
+    // --- Octet 4 ---
+    auto octet4 = std::tie(i048_210, i048_030, i048_080, i048_100, i048_110, i048_120, i048_230);
+    if (!decode_octet_inline(reader, bit, octet4, data, stats)) return false;
+    if (!reader.readBit(bit)) return true; // FX bit: if 0, we are done
+
+    stats.uninterpretedItems++;
+    return true;
+}
+
+bool Asterix048Report::process_all_octets(
+        std::string_view fspec, std::string_view& data,
+        AsterixStatsData& stats)
+{
+    if (!decode_fspec(fspec, data, stats)) {
         return false;
     }
 

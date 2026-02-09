@@ -34,7 +34,7 @@ namespace ReactorAsterix {
  * If this item is present in the bitstream, it means the sender
  * included a field we did not foresee in our schema.
  */
-class DummyItem : public AsterixDataItemHandlerBase {
+class DummyItem final : public AsterixDataItemHandlerBase {
     public:
         size_t getSize(std::string_view) const override {
             return 0;
@@ -74,99 +74,17 @@ template <typename T>
         return true;
     }
 
-// Recursive processor that walks through the "Octet" tuples
-template <size_t I = 0, typename... Octets>
-    bool decode_fspec_recursive(
-            FastBitReader& reader,
-            int& bit,
-            std::string_view& data,
-            AsterixStatsData &stats,
-            std::tuple<Octets...>& schema)
-    {
-        if constexpr (I >= sizeof...(Octets)) {
-            return true;
-        } else {
-            const auto& current_octet = std::get<I>(schema);
-            constexpr size_t num_fields = std::tuple_size_v<std::decay_t<decltype(current_octet)>>;
-
-            static_assert(num_fields == 7, "An ASTERIX FSPEC octet should have 7 data fields.");
-
-            // Decode available fields
-            bool success = std::apply([&](auto&... items) {
-                    return (decode_item(reader, bit, items, data, stats) && ...);
-                    }, current_octet);
-
-            if (!success) return false;
-
-            // If the tuple has < 7 items, skip the remaining bits to reach the FX bit position
-            if constexpr (num_fields < 7) {
-                reader.skipBits(bit, static_cast<int>(7 - num_fields));
-            }
-
-            // Read the 8th bit (FX - Field Extension)
-            bool has_extension = reader.readBit(bit);
-
-            if (has_extension) {
-                if constexpr (I + 1 < sizeof...(Octets)) {
-                    return decode_fspec_recursive<I + 1>(reader, bit, data, stats, schema);
-                } else {
-                    // The sender sent an extra octet we don't have in our schema
-                    stats.protocolViolations++;
-                    return false; // STOP DECODING
-                }
-            }
-
-            return true;
-        }
-    }
-
-/**
- * Helper to unpack an octet tuple and calculate the mandatory mask.
- * This replaces the inner std::apply to simplify template deduction.
- */
-template <typename Octet, size_t... Is>
-void process_octet_impl(const Octet& octet, std::vector<uint8_t>& mask, std::index_sequence<Is...>) {
-    uint8_t m = 0;
-    int bit = 7;
-    // Use a fold expression with std::get to bypass std::apply deduction issues
-    ((m = static_cast<uint8_t>(m | (static_cast<uint8_t>(std::get<Is>(octet).isMandatory()) << bit--))), ...);
-    mask.push_back(m);
-}
-
 template <typename Octet>
-void process_octet_mandatory(const Octet& octet, std::vector<uint8_t>& mask) {
-    process_octet_impl(octet, mask, std::make_index_sequence<std::tuple_size_v<Octet>>{});
-}
-
-template <typename SchemaTuple>
-void fill_mandatory_mask(SchemaTuple& schema, std::vector<uint8_t>& mask) {
-    mask.clear();
-    // Explicitly iterate over the outer tuple (the octets)
-    std::apply([&](auto&&... octets) {
-        (process_octet_mandatory(octets, mask), ...);
-    }, schema);
-}
-
-/**
- * @brief Calculates the minimum number of FSPEC octets required
- * to reach the last mandatory field in the schema.
- */
-template <typename SchemaTuple>
-size_t get_min_fspec_length(SchemaTuple& schema) {
-    size_t min_length = 0;
-    size_t current_octet_idx = 0;
-
-    std::apply([&](auto&&... octets) {
-        (std::apply([&](auto&&... items) {
-            current_octet_idx++;
-            // If any item in this octet is mandatory, update the minimum length
-            if ((items.isMandatory() || ...)) {
-                min_length = current_octet_idx;
-            }
-        }, octets), ...);
-    }, schema);
-
-    return min_length;
+inline bool decode_octet_inline(FastBitReader& reader, int& bit, Octet& octet,
+        std::string_view& data, AsterixStatsData& stats) {
+    // Manually unroll the 7 items in the octet
+    return (decode_item(reader, bit, std::get<0>(octet), data, stats) &&
+            decode_item(reader, bit, std::get<1>(octet), data, stats) &&
+            decode_item(reader, bit, std::get<2>(octet), data, stats) &&
+            decode_item(reader, bit, std::get<3>(octet), data, stats) &&
+            decode_item(reader, bit, std::get<4>(octet), data, stats) &&
+            decode_item(reader, bit, std::get<5>(octet), data, stats) &&
+            decode_item(reader, bit, std::get<6>(octet), data, stats));
 }
 
 } // namespace ReactorAsterix

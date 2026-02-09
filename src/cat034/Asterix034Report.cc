@@ -27,38 +27,34 @@
 
 namespace ReactorAsterix {
 
-auto Asterix034Report::get_schema() {
-    return std::make_tuple(
-        std::tie(i034_010, i034_000, i034_030, i034_020, i034_041, i034_050, i034_060),
-        std::tie(i034_070, i034_100, i034_110, i034_120, i034_090, dummy,    dummy)
-    );
-}
-
-Asterix034Report::Asterix034Report() {
-    if (!initialized) {
-        auto schema = get_schema();
-        min_fspec_len = get_min_fspec_length(schema);
-        initialized = true;
-    }
-}
-
-bool Asterix034Report::process_all_octets(
-        std::string_view fspec, std::string_view& data,
+bool Asterix034Report::decode_fspec(
+        std::string_view fspec,
+        std::string_view& data,
         AsterixStatsData& stats)
 {
     const uint8_t* raw = reinterpret_cast<const uint8_t*>(fspec.data());
     FastBitReader reader(raw);
     int bit = 7; // Start at MSB
 
-    // Declarative Schema: tuple to match ASTERIX FSPEC layout
-    auto schema = get_schema();
+    // --- Octet 1 ---
+    auto octet1 = std::tie(i034_010, i034_000, i034_030, i034_020, i034_041, i034_050, i034_060);
+    if (!decode_octet_inline(reader, bit, octet1, data, stats)) return false;
+    if (!reader.readBit(bit)) return true; // FX bit: if 0, we are done
 
-    if (!is_fspec_complete(fspec, min_fspec_len)) {
-        stats.protocolViolations++;
-    }
+    // --- Octet 2 ---
+    auto octet2 = std::tie(i034_070, i034_100, i034_110, i034_120, i034_090, dummy,    dummy);
+    if (!decode_octet_inline(reader, bit, octet2, data, stats)) return false;
+    if (!reader.readBit(bit)) return true; // FX bit: if 0, we are done
 
-    // Decode using schema
-    if (!decode_fspec_recursive(reader, bit, data, stats, schema)) {
+    stats.uninterpretedItems++;
+    return true;
+}
+
+bool Asterix034Report::process_all_octets(
+        std::string_view fspec, std::string_view& data,
+        AsterixStatsData& stats)
+{
+    if (!decode_fspec(fspec, data, stats)) {
         return false;
     }
 

@@ -37,10 +37,8 @@ namespace ReactorAsterix {
  */
 class Asterix001Report final : public AsterixReport {
     public:
-        Asterix001Report();
+        Asterix001Report() = default;
         ~Asterix001Report() override = default;
-
-        auto get_schema();
 
         /**
          * Decodes Cat 001 fields using the recursive template schema.
@@ -74,6 +72,12 @@ class Asterix001Report final : public AsterixReport {
 
         // --- FSPEC Octet 3 ---
         I001_150_Handler i001_150;
+
+    private:
+        bool decode_fspec(
+                std::string_view fspec,
+                std::string_view& data,
+                AsterixStatsData& stats);
 };
 
 } // namespace ReactorAsterix

@@ -26,6 +26,7 @@
 
 // Library headers
 #include <ReactorAsterix/core/AsterixDiagnostics.h>
+#include <ReactorAsterix/core/AsterixDecoderUtils.h>
 #include <ReactorAsterix/cat002/Asterix002DataItemCollection.h>
 
 namespace ReactorAsterix {
@@ -37,10 +38,8 @@ namespace ReactorAsterix {
  */
 class Asterix002Report final : public AsterixReport {
     public:
-        Asterix002Report();
+        Asterix002Report() = default;
         ~Asterix002Report() override = default;
-
-        auto get_schema();
 
         /**
          * Decodes Cat 002 fields using the recursive template schema.
@@ -69,6 +68,11 @@ class Asterix002Report final : public AsterixReport {
         I002_090_Handler i002_090;
         I002_080_Handler i002_080;
 
+    private:
+        bool decode_fspec(
+                std::string_view fspec,
+                std::string_view& data,
+                AsterixStatsData& stats);
 };
 
 } // namespace ReactorAsterix

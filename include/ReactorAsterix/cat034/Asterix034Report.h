@@ -26,6 +26,7 @@
 
 // Library headers
 #include <ReactorAsterix/core/AsterixDiagnostics.h>
+#include <ReactorAsterix/core/AsterixDecoderUtils.h>
 #include <ReactorAsterix/cat034/Asterix034DataItemCollection.h>
 
 namespace ReactorAsterix {
@@ -37,10 +38,8 @@ namespace ReactorAsterix {
  */
 class Asterix034Report final : public AsterixReport {
     public:
-        Asterix034Report();
+        Asterix034Report() = default;
         ~Asterix034Report() override = default;
-
-        auto get_schema();
 
         /**
          * Decodes Cat 034 fields using the recursive template schema.
@@ -70,6 +69,11 @@ class Asterix034Report final : public AsterixReport {
         I034_120_Handler i034_120; // 3D Radar Position
         I034_090_Handler i034_090; // Collimation Error
 
+    private:
+        bool decode_fspec(
+                std::string_view fspec,
+                std::string_view& data,
+                AsterixStatsData& stats);
 };
 
 } // namespace ReactorAsterix
