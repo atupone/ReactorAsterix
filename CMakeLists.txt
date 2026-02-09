@@ -15,7 +15,7 @@
 # 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
 
 cmake_minimum_required(VERSION 3.14)
-project(ReactorAsterix VERSION 0.0.11 LANGUAGES CXX)
+project(ReactorAsterix VERSION 0.0.12 LANGUAGES CXX)
 
 # ---------------------------------------------------------------------------
 # SYSTEM PATHS & INSTALLATION LOGIC
@@ -51,6 +51,8 @@ endif()
 
 # Option to enable/disable examples (Default is OFF)
 option(BUILD_EXAMPLES "Build the example applications" OFF)
+
+option(BUILD_TESTING "Build the unit tests" OFF)
 
 # ---------------------------------------------------------------------------
 # THE LIBRARY
@@ -149,13 +151,15 @@ install(EXPORT ReactorAsterixTargets
     DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/ReactorAsterix
 )
 
-enable_testing()
+if(BUILD_TESTING)
+        enable_testing()
 
-find_package(GTest)
+        find_package(GTest)
 
-add_executable(unit_tests tests/test_cat001.cc)
-target_link_libraries(unit_tests PRIVATE ReactorAsterix GTest::gtest_main)
-add_test(NAME AllTests COMMAND unit_tests)
+        add_executable(unit_tests tests/test_cat001.cc)
+        target_link_libraries(unit_tests PRIVATE ReactorAsterix GTest::gtest_main)
+        add_test(NAME AllTests COMMAND unit_tests)
+endif()
 
 if(BUILD_EXAMPLES)
         message(STATUS "Building ReactorAsterix examples")
