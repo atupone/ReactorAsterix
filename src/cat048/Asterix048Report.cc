@@ -24,6 +24,7 @@
 
 // Library headers
 #include <ReactorAsterix/core/AsterixDecoderUtils.h>
+#include <ReactorAsterix/core/AsterixDataItemHandlerSP.h>
 
 namespace ReactorAsterix {
 
@@ -32,6 +33,9 @@ bool Asterix048Report::decode_fspec(
         std::string_view& data,
         AsterixStatsData& stats)
 {
+    AsterixDataItemHandlerSP sp;
+    AsterixDataItemHandlerSP re;
+
     const uint8_t* raw = reinterpret_cast<const uint8_t*>(fspec.data());
     FastBitReader reader(raw);
     int bit = 7; // Start at MSB
@@ -52,7 +56,7 @@ bool Asterix048Report::decode_fspec(
     if (!reader.readBit(bit)) return true; // FX bit: if 0, we are done
 
     // --- Octet 4 ---
-    auto octet4 = std::tie(i048_210, i048_030, i048_080, i048_100, i048_110, i048_120, i048_230);
+    auto octet4 = std::tie(i048_260, i048_055, i048_050, i048_065, i048_060, sp,       re);
     if (!decode_octet_inline(reader, bit, octet4, data, stats)) return false;
     if (!reader.readBit(bit)) return true; // FX bit: if 0, we are done
 

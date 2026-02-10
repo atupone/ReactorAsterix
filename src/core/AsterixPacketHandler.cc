@@ -240,7 +240,6 @@ size_t AsterixPacketHandler::dispatchRecord(
     size_t consumed = handler->processDataRecord(fspec, payload, ts, localStats);
 
     if (consumed == 0) [[unlikely]] {
-        localStats.recordParseErrors++;
         return 0;
     }
 

@@ -21,6 +21,7 @@
 #include <ReactorAsterix/core/AsterixDataItemHandlerFixedLength.h>
 #include <ReactorAsterix/core/AsterixDataItemHandlerExtendedLength.h>
 #include <ReactorAsterix/core/AsterixDataItemHandlerRepetitive.h>
+#include <ReactorAsterix/core/AsterixDataItemHandlerCompound.h>
 
 // System headers
 #include <cstdlib>
@@ -61,8 +62,8 @@ class I048_010_Handler final : public AsterixDataItemHandlerFixedLength {
          */
         void decode(std::string_view data) override;
 
-        uint8_t sac;
-        uint8_t sic;
+        uint8_t sac{0};
+        uint8_t sic{0};
 };
 
 /**
@@ -194,16 +195,77 @@ class I048_090_Handler final : public AsterixDataItemHandlerFixedLength {
  * @brief Handler for I048/130, Radar Plot Characteristics.
  * An optional, compund item providing quality indicators of the plot.
  */
-class I048_130_Handler final : public AsterixDataItemHandlerFixedLength {
+class I048_130_Handler final : public AsterixDataItemHandlerCompound {
     public:
         static constexpr uint8_t FRN = 7;
-        I048_130_Handler() : AsterixDataItemHandlerFixedLength(1) {
+
+        class SRL final : public AsterixDataItemHandlerFixedLength {
+            public:
+                SRL() : AsterixDataItemHandlerFixedLength(1) {
+                    name = "SSR Plot Runlength";
+                }
+        };
+
+        class SRR final : public AsterixDataItemHandlerFixedLength {
+            public:
+                SRR() : AsterixDataItemHandlerFixedLength(1) {
+                    name = "Number of Received Replies for (M)SSR";
+                }
+        };
+
+        class SAM final : public AsterixDataItemHandlerFixedLength {
+            public:
+                SAM() : AsterixDataItemHandlerFixedLength(1) {
+                    name = "Amplitude of (M)SSR reply";
+                }
+        };
+
+        class PRL final : public AsterixDataItemHandlerFixedLength {
+            public:
+                PRL() : AsterixDataItemHandlerFixedLength(1) {
+                    name = "Primary Plot Runlength";
+                }
+        };
+
+        class PAM final : public AsterixDataItemHandlerFixedLength {
+            public:
+                PAM() : AsterixDataItemHandlerFixedLength(1) {
+                    name = "Amplitude of Primary Plot";
+                }
+        };
+
+        class RPD final : public AsterixDataItemHandlerFixedLength {
+            public:
+                RPD() : AsterixDataItemHandlerFixedLength(1) {
+                    name = "Difference in Range between PSR and SSR plot";
+                }
+        };
+
+        class APD final : public AsterixDataItemHandlerFixedLength {
+            public:
+                APD() : AsterixDataItemHandlerFixedLength(1) {
+                    name = "Difference in Azimuth between PSR and SSR plot";
+                }
+        };
+
+        SRL srl;
+        SRR srr;
+        SAM sam;
+        PRL prl;
+        PAM pam;
+        RPD rpd;
+        APD apd;
+
+        I048_130_Handler()
+            : AsterixDataItemHandlerCompound(makeVector()), srl(), srr(), sam(), prl(), pam(), rpd(), apd()
+        {
             name = "I048/130 Radar Plot Characteristics (Placeholder)";
         }
 
-        void decode(std::string_view /*data*/) override {
-            // "I'm doing abort for that item. I will come to it later"
-            std::abort();
+    private:
+        // Helper to build the vector using member addresses
+        std::vector<AsterixDataItemHandlerBase*> makeVector() {
+            return { &srl, &srr, &sam, &prl, &pam, &rpd, &apd };
         }
 };
 
@@ -369,15 +431,35 @@ class I048_110_Handler final : public AsterixDataItemHandlerFixedLength {
  * @brief Handler for I048/120, Radial Doppler Speed.
  * An optional, compound item.
  */
-class I048_120_Handler final : public AsterixDataItemHandlerFixedLength {
+class I048_120_Handler final : public AsterixDataItemHandlerCompound {
     public:
-        static constexpr uint8_t FRN = 20;
-        I048_120_Handler() : AsterixDataItemHandlerFixedLength(1) {
+        class CAL final : public AsterixDataItemHandlerFixedLength {
+            public:
+                CAL() : AsterixDataItemHandlerFixedLength(2) {
+                    name = "Calculated Doppler Speed";
+                }
+        };
+
+        class RDS final : public AsterixDataItemHandlerRepetitive {
+            public:
+                RDS() : AsterixDataItemHandlerRepetitive(6) {
+                    name = "Raw Doppler Speed";
+                }
+        };
+
+        CAL cal;
+        RDS rds;
+
+        I048_120_Handler()
+            : AsterixDataItemHandlerCompound(makeVector()), cal(), rds()
+        {
             name = "I048/120 Radial Doppler Speed";
         }
-        void decode(std::string_view /*data*/) override {
-            // "I'm doing abort for that item. I will come to it later"
-            std::abort();
+
+    private:
+        // Helper to build the vector using member addresses
+        std::vector<AsterixDataItemHandlerBase*> makeVector() {
+            return { &cal, &rds };
         }
 };
 

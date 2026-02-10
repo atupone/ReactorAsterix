@@ -20,6 +20,7 @@
 // Inherits from
 #include <ReactorAsterix/core/AsterixDataItemHandlerFixedLength.h>
 #include <ReactorAsterix/core/AsterixDataItemHandlerRepetitive.h>
+#include <ReactorAsterix/core/AsterixDataItemHandlerCompound.h>
 
 // System headers
 #include <cstdlib>
@@ -32,6 +33,10 @@ class Asterix034Report;
 /**
  * @file Asterix034DataItemCollection.h
  * @brief Declares the specific handler classes for **ASTERIX Category 034** data items.
+ *
+ * Each class publicly inherits from an appropriate base class (`AsterixDataItemHandlerFixedLength`
+ * or `AsterixDataItemHandlerExtendedLength`) and is responsible for decoding a single
+ * data item into the `Asterix1Report` context object.
  */
 
 // ----------------------------------------------------------------------------------
@@ -39,10 +44,8 @@ class Asterix034Report;
 // ----------------------------------------------------------------------------------
 
 /**
- * @brief Handler for ASTERIX Data Item I034/010, Data Source Identifier.
- *
- * This mandatory, 2-byte item provides the System Area Code (SAC) and System
- * Identification Code (SIC) to uniquely identify the data source.
+ * @brief Handler for I048/010, Data Source Identifier.
+ * A mandatory, fixed-length (2-byte) item providing the SAC and SIC.
  */
 class I034_010_Handler final : public AsterixDataItemHandlerFixedLength {
     public:
@@ -139,14 +142,53 @@ class I034_041_Handler final : public AsterixDataItemHandlerFixedLength {
 /**
  * @brief I034/050 System Configuration and Status (Compound Item)
  */
-class I034_050_Handler final : public AsterixDataItemHandlerFixedLength {
+class I034_050_Handler final : public AsterixDataItemHandlerCompound {
     public:
         static constexpr uint8_t FRN = 6;
-        I034_050_Handler() : AsterixDataItemHandlerFixedLength(1) {
+
+        class COM final : public AsterixDataItemHandlerFixedLength {
+            public:
+                COM() : AsterixDataItemHandlerFixedLength(1) {
+                    name = "Common Part";
+                }
+        };
+
+        class PSR final : public AsterixDataItemHandlerFixedLength {
+            public:
+                PSR() : AsterixDataItemHandlerFixedLength(1) {
+                    name = "Specific Status for PSR Sensor";
+                }
+        };
+
+        class SSR final : public AsterixDataItemHandlerFixedLength {
+            public:
+                SSR() : AsterixDataItemHandlerFixedLength(1) {
+                    name = "Specific Status for SSR Sensor";
+                }
+        };
+
+        class MDS final : public AsterixDataItemHandlerFixedLength {
+            public:
+                MDS() : AsterixDataItemHandlerFixedLength(2) {
+                    name = "Specific Status for Mode S Sensor";
+                }
+        };
+
+        COM com;
+        PSR psr;
+        SSR ssr;
+        MDS mds;
+
+        I034_050_Handler()
+            : AsterixDataItemHandlerCompound(makeVector()), com(), psr(), ssr(), mds()
+        {
             name = "I034/050 System Configuration and Status";
         }
-        void decode(std::string_view /* data */) override {
-            std::abort();
+
+    private:
+        // Helper to build the vector using member addresses
+        std::vector<AsterixDataItemHandlerBase*> makeVector() {
+            return { &com, nullptr, nullptr, &psr, &ssr, &mds};
         }
 };
 
