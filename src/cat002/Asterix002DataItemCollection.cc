@@ -37,17 +37,25 @@ namespace ReactorAsterix {
  *
  * @param data The raw data buffer for this item (2 bytes).
  */
-void I002_010_Handler::decode(std::string_view data) {
+size_t I002_010_Handler::decode(std::string_view data) {
+    if (data.size() < fixedSize) return 0;
+
     sac = static_cast<uint8_t>(data[0]);
     sic = static_cast<uint8_t>(data[1]);
+
+    return AsterixDataItemHandlerFixedLength::decode(data);
 }
 
 /**
  * @brief Decodes the 1-byte Message Type (I002/000).
  * 1 = North Marker, 2 = Sector Message
  */
-void I002_000_Handler::decode(std::string_view data) {
+size_t I002_000_Handler::decode(std::string_view data) {
+    if (data.size() < fixedSize) return 0;
+
     messageType = static_cast<MESSAGE_TYPE_T>(data[0]);
+
+    return AsterixDataItemHandlerFixedLength::decode(data);
 }
 
 /**
@@ -57,7 +65,9 @@ void I002_000_Handler::decode(std::string_view data) {
  *
  * @param data The raw data buffer containing the 3 bytes of TOD.
  */
-void I002_030_Handler::decode(std::string_view data) {
+size_t I002_030_Handler::decode(std::string_view data) {
+    if (data.size() < fixedSize) return 0;
+
     // Use a pointer to unsigned to avoid messy casting
     auto* udata = reinterpret_cast<const uint8_t*>(data.data());
 
@@ -65,6 +75,8 @@ void I002_030_Handler::decode(std::string_view data) {
         (static_cast<uint32_t>(udata[0]) << 16) |
         (static_cast<uint32_t>(udata[1]) << 8)  |
         (static_cast<uint32_t>(udata[2]));
+
+    return AsterixDataItemHandlerFixedLength::decode(data);
 }
 
 /**
@@ -75,8 +87,12 @@ void I002_030_Handler::decode(std::string_view data) {
  *
  * @param data The raw data buffer containing the 2-byte speed value.
  */
-void I002_041_Handler::decode(std::string_view data) {
+size_t I002_041_Handler::decode(std::string_view data) {
+    if (data.size() < fixedSize) return 0;
+
     speed = readBigEndian<uint16_t>(data.data());
+
+    return AsterixDataItemHandlerFixedLength::decode(data);
 }
 
 } // namespace ReactorAsterix

@@ -36,11 +36,15 @@ namespace ReactorAsterix {
  *
  * @param data The raw data buffer for this item (2 bytes).
  */
-void I048_010_Handler::decode(std::string_view data) {
+size_t I048_010_Handler::decode(std::string_view data) {
+    if (data.size() < fixedSize) return 0;
+
     // data[0] is the System Area Code (SAC), and data[1] is the System Identification Code (SIC).
     // Explicit cast to avoid sign-conversion warnings
     sac = static_cast<uint8_t>(data[0]);
     sic = static_cast<uint8_t>(data[1]);
+
+    return AsterixDataItemHandlerFixedLength::decode(data);
 }
 
 /**
@@ -50,7 +54,9 @@ void I048_010_Handler::decode(std::string_view data) {
  *
  * @param data The raw data buffer containing the 3 bytes of TOD.
  */
-void I048_140_Handler::decode(std::string_view data) {
+size_t I048_140_Handler::decode(std::string_view data) {
+    if (data.size() < fixedSize) return 0;
+
     // Use a pointer to unsigned to avoid messy casting
     auto* udata = reinterpret_cast<const uint8_t*>(data.data());
 
@@ -58,6 +64,8 @@ void I048_140_Handler::decode(std::string_view data) {
         (static_cast<uint32_t>(udata[0]) << 16) |
         (static_cast<uint32_t>(udata[1]) << 8)  |
         (static_cast<uint32_t>(udata[2]));
+
+    return AsterixDataItemHandlerFixedLength::decode(data);
 }
 
 // ----------------------------------------------------------------------------------
@@ -72,7 +80,9 @@ void I048_140_Handler::decode(std::string_view data) {
  *
  * @param data The raw data buffer for this item.
  */
-void I048_020_Handler::decode(std::string_view data) {
+size_t I048_020_Handler::decode(std::string_view data) {
+    if (data.empty()) return 0;
+
     const uint8_t* raw = reinterpret_cast<const uint8_t*>(data.data());
     FastBitReader reader(raw);
     int bit = 7; // Start at MSB
@@ -94,7 +104,13 @@ void I048_020_Handler::decode(std::string_view data) {
 
     // Check the FX bit (bit 0) to see if the second octet exists.
     bool fx = reader.readBit(bit);
+
+    size_t consumed = 1;
+
     if (fx) {
+        // Safe Check: Can we read the 2nd byte?
+        if (consumed >= data.size()) return 0;
+
         // Decode TST bit (Test, bit 8 2nd byte)
         tst = reader.readBit(bit);
 
@@ -102,7 +118,32 @@ void I048_020_Handler::decode(std::string_view data) {
         reader.skipBits(bit, 2);
 
         me = reader.readBit(bit);
+
+        reader.skipBits(bit, 3);
+
+        // Check the FX bit (bit 0) of the second octet for the third octet.
+        fx = reader.readBit(bit);
+
+        consumed++; // Now we've finished 2 bytes
+
+        // Extended Chain
+        while (fx) {
+            // Before we move to the next byte, we check if it exists.
+            // 'consumed' currently holds the count of bytes ALREADY read.
+            // If 'consumed' equals 'data.size()', there is no next byte.
+            if (consumed >= data.size()) return 0;
+
+            // We only care about the FX bit in subsequent octets
+            reader.skipBits(bit, 7);
+            fx = reader.readBit(bit);
+
+            // We successfully finished another byte
+            consumed++;
+        }
     }
+
+    AsterixDataItemHandlerBase::decode(data);
+    return consumed;
 }
 
 void I048_020_Handler::reset() {
@@ -127,9 +168,13 @@ void I048_020_Handler::reset() {
  *
  * @param data The raw data buffer for this item (4 bytes).
  */
-void I048_040_Handler::decode(std::string_view data) {
+size_t I048_040_Handler::decode(std::string_view data) {
+    if (data.size() < fixedSize) return 0;
+
     range   = readBigEndian<uint16_t>(data.data());
     azimuth = readBigEndian<uint16_t>(data.data() + 2);
+
+    return AsterixDataItemHandlerFixedLength::decode(data);
 }
 
 // ----------------------------------------------------------------------------------
@@ -145,7 +190,9 @@ void I048_040_Handler::decode(std::string_view data) {
  *
  * @param data The raw data buffer for this item (2 bytes).
  */
-void I048_070_Handler::decode(std::string_view data) {
+size_t I048_070_Handler::decode(std::string_view data) {
+    if (data.size() < fixedSize) return 0;
+
     const uint8_t* raw = reinterpret_cast<const uint8_t*>(data.data());
     FastBitReader reader(raw);
     int bit = 7; // Start at MSB
@@ -159,6 +206,8 @@ void I048_070_Handler::decode(std::string_view data) {
 
     // Extract the 12 bits of the Mode 3/A code (0x0fff mask).
     code = mode3ATemp & 0x0FFF;
+
+    return AsterixDataItemHandlerFixedLength::decode(data);
 }
 
 /**
@@ -170,7 +219,9 @@ void I048_070_Handler::decode(std::string_view data) {
  *
  * @param data The raw data buffer for this item (2 bytes).
  */
-void I048_090_Handler::decode(std::string_view data) {
+size_t I048_090_Handler::decode(std::string_view data) {
+    if (data.size() < fixedSize) return 0;
+
     const uint8_t* raw = reinterpret_cast<const uint8_t*>(data.data());
     FastBitReader reader(raw);
     int bit = 7; // Start at MSB
@@ -191,6 +242,8 @@ void I048_090_Handler::decode(std::string_view data) {
     }
 
     height = static_cast<int16_t>(flightLevelTemp);
+
+    return AsterixDataItemHandlerFixedLength::decode(data);
 }
 
 // ----------------------------------------------------------------------------------
@@ -203,7 +256,9 @@ void I048_090_Handler::decode(std::string_view data) {
  * @param report The target `Asterix048Report` object.
  * @param data The raw data buffer for this item (2 bytes).
  */
-void I048_110_Handler::decode(std::string_view data) {
+size_t I048_110_Handler::decode(std::string_view data) {
+    if (data.size() < fixedSize) return 0;
+
     auto flightLevelTemp = readBigEndian<uint16_t>(data.data());
 
     // Clear the reserved bits and extract the 14-bit value.
@@ -217,8 +272,9 @@ void I048_110_Handler::decode(std::string_view data) {
     }
 
     height = static_cast<int16_t>(flightLevelTemp);
-}
 
+    return AsterixDataItemHandlerFixedLength::decode(data);
+}
 
 } // namespace ReactorAsterix
 

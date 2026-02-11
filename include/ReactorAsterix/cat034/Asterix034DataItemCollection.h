@@ -59,7 +59,7 @@ class I034_010_Handler final : public AsterixDataItemHandlerFixedLength {
          * @brief Decodes the 2-byte Data Source Identifier.
          * @param data The raw data buffer.
          */
-        void decode(std::string_view data) override;
+        [[nodiscard]] size_t decode(std::string_view data) override;
 
         uint8_t sac{0};
         uint8_t sic{0};
@@ -78,7 +78,7 @@ class I034_000_Handler final: public AsterixDataItemHandlerFixedLength {
             name = "I034/000, Message Type";
         }
 
-        void decode(std::string_view data) override;
+        [[nodiscard]] size_t decode(std::string_view data) override;
 
         enum class MESSAGE_TYPE_T : uint8_t {
             NORTH_MARKER = 1,
@@ -106,7 +106,7 @@ class I034_030_Handler final : public AsterixDataItemHandlerFixedLength {
         I034_030_Handler(): AsterixDataItemHandlerFixedLength(3) {
             name = "I034/030, Time of Day";
         }
-        void decode(std::string_view data) override;
+        [[nodiscard]] size_t decode(std::string_view data) override;
 
         uint32_t TOD{0};
 };
@@ -123,7 +123,7 @@ class I034_020_Handler final : public AsterixDataItemHandlerFixedLength {
         I034_020_Handler() : AsterixDataItemHandlerFixedLength(1) {
             name = "I034/020, Sector Number";
         }
-        void decode(std::string_view data) override;
+        [[nodiscard]] size_t decode(std::string_view data) override;
 
         uint8_t sectorNumber{0};
 };
@@ -134,7 +134,7 @@ class I034_041_Handler final : public AsterixDataItemHandlerFixedLength {
         I034_041_Handler() : AsterixDataItemHandlerFixedLength(2) {
             name = "I034/041, Antenna Rotation Period";
         }
-        void decode(std::string_view data) override;
+        [[nodiscard]] size_t decode(std::string_view data) override;
 
         uint16_t speed{0};
 };
@@ -201,7 +201,7 @@ class I034_060_Handler final : public AsterixDataItemHandlerFixedLength {
         I034_060_Handler() : AsterixDataItemHandlerFixedLength(1) {
             name = "I034/060 System Processing Parameters";
         }
-        void decode(std::string_view /* data */) override {
+        [[nodiscard]] size_t decode(std::string_view /* data */) override {
             std::abort();
         }
 };
@@ -250,7 +250,7 @@ class I034_120_Handler final : public AsterixDataItemHandlerFixedLength {
         I034_120_Handler() : AsterixDataItemHandlerFixedLength(8) {
             name = "I034/120, 3D-Position of Data Source";
         }
-        void decode(std::string_view data) override;
+        [[nodiscard]] size_t decode(std::string_view data) override;
 
         uint16_t height{0};
         int32_t  latitude{0};

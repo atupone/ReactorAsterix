@@ -62,7 +62,7 @@ class I002_010_Handler final : public AsterixDataItemHandlerFixedLength {
          * @param context The target `Asterix1Report` object.
          * @param data The raw data buffer.
          */
-        void decode(std::string_view data) override;
+        [[nodiscard]] size_t decode(std::string_view data) override;
 
         uint8_t sac;
         uint8_t sic;
@@ -81,7 +81,7 @@ class I002_000_Handler final: public AsterixDataItemHandlerFixedLength {
             name      = "I002/000, Message Type";
         }
 
-        void decode(std::string_view data) override;
+        [[nodiscard]] size_t decode(std::string_view data) override;
 
         enum class MESSAGE_TYPE_T : uint8_t {
             NORTH_MARKER = 1,
@@ -121,7 +121,7 @@ class I002_030_Handler final : public AsterixDataItemHandlerFixedLength {
         I002_030_Handler(): AsterixDataItemHandlerFixedLength(3) {
             name = "I002/030, Time of Day";
         }
-        void decode(std::string_view data) override;
+        [[nodiscard]] size_t decode(std::string_view data) override;
 
         uint32_t TOD{0};
 };
@@ -139,7 +139,7 @@ class I002_041_Handler final : public AsterixDataItemHandlerFixedLength {
             name      = "I002/041, Antenna Rotation Speed";
         }
 
-        void decode(std::string_view data) override;
+        [[nodiscard]] size_t decode(std::string_view data) override;
 
         uint16_t speed{0};
 };

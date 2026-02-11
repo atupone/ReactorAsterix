@@ -36,7 +36,7 @@ namespace ReactorAsterix {
  */
 class DummyItem final : public AsterixDataItemHandlerBase {
     public:
-        size_t getSize(std::string_view) const override {
+        size_t decode([[maybe_unused]] std::string_view) override {
             return 0;
         }
 };
@@ -64,12 +64,11 @@ template <typename T>
             return false; // STOP DECODING: Unforeseen item encountered
         }
 
-        auto itemSize = item.getSize(data);
-        if (itemSize > data.size()) [[unlikely]] {
+        auto itemSize = item.decode(data);
+        if (!itemSize) [[unlikely]] {
             return false;
         }
 
-        item.decode(data.substr(0, itemSize));
         data.remove_prefix(itemSize);
         return true;
     }

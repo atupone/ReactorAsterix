@@ -44,69 +44,13 @@ class AsterixDataItemHandlerCompound : public AsterixDataItemHandlerBase {
             : m_subItems(std::move(subItems)) {}
         ~AsterixDataItemHandlerCompound() override = default;
 
-        /**
-         * @brief Calculates total size by scanning indicator bytes and present sub-items.
-         */
-        size_t getSize(std::string_view data) const override {
-            if (data.empty()) return 0;
+        [[nodiscard]] size_t decode(std::string_view data) override {
+            size_t indicatorLen = calculateIndicatorLen(data);
+            if (indicatorLen == 0 || indicatorLen > data.size()) return 0;
 
-            size_t indicatorLen = 0;
-            // Determine indicator length (FX bit logic)
-            while (indicatorLen < data.size()) {
-                uint8_t octet = static_cast<uint8_t>(data[indicatorLen++]);
-                if ((octet & 0x01) == 0) break;
-            }
-
+            std::string_view subFieldsData = data.substr(indicatorLen);
             size_t totalSize = indicatorLen;
-            std::string_view subFieldsData = data.substr(indicatorLen);
 
-            // Get an iterator to the start of the handlers
-            auto currentHandler = m_subItems.data();
-
-            size_t handlersLeft = m_subItems.size();
-            for (size_t octetIdx = 0; octetIdx < indicatorLen; ++octetIdx) {
-                uint8_t indicator = static_cast<uint8_t>(data[octetIdx]);
-
-                // Process the 7 sub-item bits in this specific octet
-                for (int bit = 7; bit > 0; --bit) {
-                    bool isPresence = (indicator >> bit) & 0x01;
-
-                    if (isPresence) {
-                        // SAFETY CHECK: Ensure we haven't reached the end of our defined handlers.
-                        // This must happen BEFORE dereferencing *currentHandler.
-                        if (handlersLeft == 0) {
-                            return 0; // Data expects a field we don't have a handler for.
-                        }
-
-                        auto* subHandler = *currentHandler;
-                        if (!subHandler) {
-                            return 0; // Safety for null pointers in the vector.
-                        }
-
-                        size_t subSize = subHandler->getSize(subFieldsData);
-                        totalSize += subSize;
-                        subFieldsData = subFieldsData.substr(subSize);
-                    }
-
-                    if (handlersLeft > 0) {
-                        handlersLeft--;
-                        currentHandler++;
-                    }
-                }
-            }
-            return totalSize;
-        };
-
-        void decode(std::string_view data) override {
-            if (data.empty()) return;
-
-            size_t indicatorLen = 0;
-            while (indicatorLen < data.size()) {
-                uint8_t octet = static_cast<uint8_t>(data[indicatorLen++]);
-                if ((octet & 0x01) == 0) break;
-            }
-
-            std::string_view subFieldsData = data.substr(indicatorLen);
             auto* currentHandler = m_subItems.data();
             size_t handlersLeft = m_subItems.size();
 
@@ -117,17 +61,15 @@ class AsterixDataItemHandlerCompound : public AsterixDataItemHandlerBase {
                     bool isPresence = (indicator >> bit) & 0x01;
 
                     if (isPresence) {
-                        if (handlersLeft == 0 || !(*currentHandler)) {
-                            return;
-                        }
+                        if (handlersLeft == 0 || !(*currentHandler)) return 0;
 
-                        // Store current size before decoding to advance pointer
-                        size_t subSize = (*currentHandler)->getSize(subFieldsData);
-                        if (subSize == 0) {
-                            return;
-                        }
-                        (*currentHandler)->decode(subFieldsData);
+                        // Decode now returns the size. We use it to advance immediately.
+                        size_t subSize = (*currentHandler)->decode(subFieldsData);
+
+                        if (subSize == 0) return 0;
+
                         subFieldsData = subFieldsData.substr(subSize);
+                        totalSize += subSize;
                     }
 
                     if (handlersLeft > 0) {
@@ -136,11 +78,31 @@ class AsterixDataItemHandlerCompound : public AsterixDataItemHandlerBase {
                     }
                 }
             }
-            return;
+
+            AsterixDataItemHandlerBase::decode(data);
+            return totalSize;
         }
 
     protected:
         std::vector<AsterixDataItemHandlerBase*> m_subItems;
+
+    private:
+        size_t calculateIndicatorLen(std::string_view data) const {
+            size_t len = 0;
+            bool fx = true;
+
+            // While the FX bit is 1, keep counting octets
+            while (fx && len < data.size()) {
+                uint8_t octet = static_cast<uint8_t>(data[len]);
+                len++;
+                fx = (octet & 0x01); // Check if bit 0 is set
+            }
+
+            // If the last FX bit says there is more, but we ran out of data: trespass!
+            if (fx && len >= data.size()) return 0;
+
+            return len;
+        }
 };
 
 } // namespace ReactorAsterix

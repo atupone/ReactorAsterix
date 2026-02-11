@@ -55,20 +55,7 @@ class IAsterixDataItemHandler {
          * where the decoded information will be stored.
          * @param data A pointer to the start of the data item.
          */
-        virtual void decode(std::string_view data) = 0;
-
-        /**
-         * @brief Returns the size of the data item in bytes.
-         *
-         * This method is used to determine how many bytes to read from the data stream.
-         * For variable-length items, the implementation will need to inspect the
-         * data content (e.g., using the FX bit) to calculate the size.
-         *
-         * @param data A pointer to the start of the data item.
-         * @param dataLeft The remaining size of the data stream.
-         * @return The size of the data item in bytes.
-         */
-        [[nodiscard]] virtual size_t getSize(std::string_view data) const = 0;
+        [[nodiscard]] virtual size_t decode(std::string_view data) = 0;
 
         // The universal presence flag
         bool presence{false};

@@ -45,7 +45,11 @@ class AsterixDataItemHandlerBase : public IAsterixDataItemHandler {
          * @brief Default implementation of decode does nothing.
          * Useful for reserved or ignored items.
          */
-        void decode([[maybe_unused]] std::string_view data) override {};
+        size_t decode([[maybe_unused]] std::string_view data) override
+        {
+            presence = true;
+            return 0;
+        };
 
         // By default, a data item is NOT mandatory.
         // Derived classes only need to override this if the item is mandatory.

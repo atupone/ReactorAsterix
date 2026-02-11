@@ -39,7 +39,8 @@ class AsterixDataItemHandlerFixedLength : public AsterixDataItemHandlerBase {
         /**
          * @brief Returns the constant size, ignoring the buffer content.
          */
-        size_t getSize(std::string_view /*data*/) const final {
+        [[nodiscard]] size_t decode([[maybe_unused]] std::string_view data) override {
+            AsterixDataItemHandlerBase::decode(data);
             return fixedSize;
         };
 

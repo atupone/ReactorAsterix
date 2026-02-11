@@ -34,17 +34,25 @@ namespace ReactorAsterix {
  *
  * @param data The raw data buffer for this item (2 bytes).
  */
-void I034_010_Handler::decode(std::string_view data) {
+size_t I034_010_Handler::decode(std::string_view data) {
+    if (data.size() < fixedSize) return 0;
+
     sac = static_cast<uint8_t>(data[0]);
     sic = static_cast<uint8_t>(data[1]);
+
+    return AsterixDataItemHandlerFixedLength::decode(data);
 }
 
 /**
  * @brief Decodes the 1-byte Message Type (I034/000).
  * 1 = North Marker, 2 = Sector Message
  */
-void I034_000_Handler::decode(std::string_view data) {
+size_t I034_000_Handler::decode(std::string_view data) {
+    if (data.size() < fixedSize) return 0;
+
     messageType = static_cast<MESSAGE_TYPE_T>(data[0]);
+
+    return AsterixDataItemHandlerFixedLength::decode(data);
 }
 
 /**
@@ -54,7 +62,9 @@ void I034_000_Handler::decode(std::string_view data) {
  *
  * @param data The raw data buffer containing the 3 bytes of TOD.
  */
-void I034_030_Handler::decode(std::string_view data) {
+size_t I034_030_Handler::decode(std::string_view data) {
+    if (data.size() < fixedSize) return 0;
+
     // Use a pointer to unsigned to avoid messy casting
     auto* udata = reinterpret_cast<const uint8_t*>(data.data());
 
@@ -62,18 +72,30 @@ void I034_030_Handler::decode(std::string_view data) {
         (static_cast<uint32_t>(udata[0]) << 16) |
         (static_cast<uint32_t>(udata[1]) << 8)  |
         (static_cast<uint32_t>(udata[2]));
+
+    return AsterixDataItemHandlerFixedLength::decode(data);
 }
 
-void I034_020_Handler::decode(std::string_view data) {
+size_t I034_020_Handler::decode(std::string_view data) {
+    if (data.size() < fixedSize) return 0;
+
     sectorNumber = static_cast<uint8_t>(data[0]);
+
+    return AsterixDataItemHandlerFixedLength::decode(data);
 }
 
-void I034_041_Handler::decode(std::string_view data) {
+size_t I034_041_Handler::decode(std::string_view data) {
+    if (data.size() < fixedSize) return 0;
+
     // LSB = 1/128 second
     speed = decodeBigEndian<uint16_t>(data);
+
+    return AsterixDataItemHandlerFixedLength::decode(data);
 }
 
-void I034_120_Handler::decode(std::string_view data) {
+size_t I034_120_Handler::decode(std::string_view data) {
+    if (data.size() < fixedSize) return 0;
+
     // Height: 16-bit unsigned, LSB = 1 meter
     height = (static_cast<uint8_t>(data[0]) << 8) | static_cast<uint8_t>(data[1]);
 
@@ -82,6 +104,8 @@ void I034_120_Handler::decode(std::string_view data) {
 
     // Longitude (Bytes 6-8): 3-byte signed
     longitude = decode24BitSigned(data.substr(5, 3));
+
+    return AsterixDataItemHandlerFixedLength::decode(data);
 }
 
 } // namespace ReactorAsterix

@@ -42,7 +42,7 @@ class AsterixDataItemHandlerSP : public AsterixDataItemHandlerBase {
          * @brief Calculates the total size by reading the First byte
          * Matches the signature in IAsterixDataItemHandler.h.
          */
-        inline size_t getSize(std::string_view data) const final {
+        [[nodiscard]] size_t decode(std::string_view data) final {
             if (data.size() < 1) [[unlikely]] {
                 return 0;
             }

@@ -55,7 +55,7 @@ class I001_010_Handler final : public AsterixDataItemHandlerFixedLength {
          * @brief Decodes the 2-byte Data Source Identifier.
          * @param data The raw data buffer.
          */
-        void decode(std::string_view data) override;
+        [[nodiscard]] size_t decode(std::string_view data) override;
 
         uint8_t sac;
         uint8_t sic;
@@ -77,7 +77,7 @@ class I001_020_Handler final : public AsterixDataItemHandlerExtendedLength {
          * @brief Decodes the Target Report Descriptor (TRT, SPI, EMG, etc.).
          * @param data The raw data buffer.
          */
-        void decode(std::string_view data) override;
+        [[nodiscard]] size_t  decode(std::string_view data) override;
 
         void reset();
 
@@ -127,7 +127,7 @@ class I001_040_Handler final : public AsterixDataItemHandlerFixedLength {
          * @param context The target `Asterix048Report` object.
          * @param data The raw data buffer.
          */
-        void decode(std::string_view data) override;
+        [[nodiscard]] size_t  decode(std::string_view data) override;
 
         uint16_t range;
         uint16_t azimuth;
@@ -148,7 +148,7 @@ class I001_070_Handler final : public AsterixDataItemHandlerFixedLength {
          * @brief Decodes the 2-byte Mode-3/A code.
          * @param data The raw data buffer.
          */
-        void decode(std::string_view data) override;
+        [[nodiscard]] size_t  decode(std::string_view data) override;
 
         uint16_t code;
         bool validated;
@@ -171,7 +171,7 @@ class I001_090_Handler final : public AsterixDataItemHandlerFixedLength {
          * @brief Decodes the 2-byte Mode-C code and converts it to a height in meters.
          * @param data The raw data buffer.
          */
-        void decode(std::string_view data) override;
+        [[nodiscard]] size_t  decode(std::string_view data) override;
 
         int16_t height;
         bool validated;
@@ -204,7 +204,7 @@ class I001_141_Handler final : public AsterixDataItemHandlerFixedLength {
          * @brief Decodes the 2-byte Truncated Time of Day (TOD).
          * @param data The raw data buffer.
          */
-        void decode(std::string_view data) override;
+        [[nodiscard]] size_t  decode(std::string_view data) override;
 
         uint16_t todLSP;
 };

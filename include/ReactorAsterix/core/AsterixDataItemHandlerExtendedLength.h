@@ -45,7 +45,9 @@ class AsterixDataItemHandlerExtendedLength : public AsterixDataItemHandlerBase {
          * @brief Calculates the total size by scanning for the FX bit (LSB).
          * Matches the signature in IAsterixDataItemHandler.h.
          */
-        inline size_t getSize(std::string_view data) const final {
+        [[nodiscard]] size_t decode(std::string_view data) {
+            AsterixDataItemHandlerBase::decode(data);
+
             // k is the initial length (e.g., 1 byte)
             size_t currentPos = k - 1;
 

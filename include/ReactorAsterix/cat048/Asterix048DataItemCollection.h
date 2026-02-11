@@ -60,7 +60,7 @@ class I048_010_Handler final : public AsterixDataItemHandlerFixedLength {
          * @brief Decodes the 2-byte Data Source Identifier.
          * @param data The raw data buffer.
          */
-        void decode(std::string_view data) override;
+        [[nodiscard]] size_t decode(std::string_view data) override;
 
         uint8_t sac{0};
         uint8_t sic{0};
@@ -80,7 +80,7 @@ class I048_140_Handler final : public AsterixDataItemHandlerFixedLength {
             name = "I048/140, Time of Day";
         }
 
-        void decode(std::string_view data) override;
+        [[nodiscard]] size_t decode(std::string_view data) override;
 
         uint32_t TOD;
 };
@@ -100,7 +100,7 @@ class I048_020_Handler final : public AsterixDataItemHandlerExtendedLength {
          * @brief Decodes the Target Report Descriptor (TRT, SPI, EMG, etc.).
          * @param data The raw data buffer.
          */
-        void decode(std::string_view data) override;
+        [[nodiscard]] size_t decode(std::string_view data) override;
         void reset();
 
         // Enumeration for TYP
@@ -140,7 +140,7 @@ class I048_040_Handler final : public AsterixDataItemHandlerFixedLength {
          * @param context The target `Asterix048Report` object.
          * @param data The raw data buffer.
          */
-        void decode(std::string_view data) override;
+        [[nodiscard]] size_t decode(std::string_view data) override;
 
         uint16_t range;
         uint16_t azimuth;
@@ -161,7 +161,7 @@ class I048_070_Handler final : public AsterixDataItemHandlerFixedLength {
          * @brief Decodes the 2-byte Mode-3/A code.
          * @param data The raw data buffer.
          */
-        void decode(std::string_view data) override;
+        [[nodiscard]] size_t decode(std::string_view data) override;
 
         uint16_t code;
         bool validated;
@@ -184,7 +184,7 @@ class I048_090_Handler final : public AsterixDataItemHandlerFixedLength {
          * @brief Decodes the 2-byte Mode-C code and converts it to a height in meters.
          * @param data The raw data buffer.
          */
-        void decode(std::string_view data) override;
+        [[nodiscard]] size_t decode(std::string_view data) override;
 
         int16_t height;
         bool validated;
@@ -422,7 +422,7 @@ class I048_110_Handler final : public AsterixDataItemHandlerFixedLength {
          * @param context The target `Asterix048Report` object.
          * @param data The raw data buffer.
          */
-        void decode(std::string_view data) override;
+        [[nodiscard]] size_t decode(std::string_view data) override;
 
         int16_t height;
 };
