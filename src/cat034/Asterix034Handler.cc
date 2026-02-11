@@ -31,7 +31,7 @@ using namespace Constants;
 Asterix034Handler::Asterix034Handler(std::shared_ptr<SourceStateManager> manager)
     : AsterixCategoryHandler(std::move(manager)) {}
 
-bool Asterix034Handler::onAfterDecode(Asterix034Report& report, struct timespec ts)
+bool Asterix034Handler::onAfterDecode(struct timespec ts)
 {
     uint32_t TOD = report.i034_030.TOD;
 

@@ -86,7 +86,7 @@ uint32_t Asterix001Handler::expandTruncatedTime(uint16_t todLSP, uint32_t refTOD
     return bestT;
 }
 
-bool Asterix001Handler::onAfterDecode(Asterix001Report& report, struct timespec ts)
+bool Asterix001Handler::onAfterDecode(struct timespec ts)
 {
     if (!report.sourceRecord->isSynchronized.load(std::memory_order_acquire)) [[unlikely]] {
         return false;

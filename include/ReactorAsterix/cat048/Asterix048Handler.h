@@ -46,7 +46,7 @@ class Asterix048Handler final
 
     protected:
         // Implementation of the Hook: Time Synchronization Logic
-        bool onAfterDecode(Asterix048Report& report, struct timespec ts);
+        bool onAfterDecode(struct timespec ts);
 
         // Supports multiple sinks (Logger, Tracker, Display)
         std::vector<std::weak_ptr<IAsterix048Listener>> listeners;

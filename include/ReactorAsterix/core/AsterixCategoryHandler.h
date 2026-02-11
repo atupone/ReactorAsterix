@@ -99,8 +99,6 @@ class AsterixCategoryHandler : public IAsterixCategoryHandler {
                 std::string_view payload,
                 struct timespec ts,
                 AsterixStatsData& localStats) override {
-            // Initialize Report (Type T is Asterix1Report, Asterix2Report, etc.)
-            static thread_local T report;
             report.reset();
 
             // Common Logic Hoisted: Every report gets the manager reference
@@ -134,7 +132,7 @@ class AsterixCategoryHandler : public IAsterixCategoryHandler {
             }
 
             // Hook: Post-decode logic (TOD synchronization, midnight wrap-around)
-            bool keep_report = static_cast<Derived*>(this)->onAfterDecode(report, ts);
+            bool keep_report = static_cast<Derived*>(this)->onAfterDecode(ts);
 
             if (keep_report) [[likely]] {
                 // Notify Listeners (Shared logic)
@@ -180,6 +178,8 @@ class AsterixCategoryHandler : public IAsterixCategoryHandler {
 
             return static_cast<uint32_t>(corrected);
         }
+
+        T report; // Persistent member variable, no TLS lookup needed
 
         std::shared_ptr<SourceStateManager> sourceStateManager;
 
