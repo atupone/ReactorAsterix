@@ -195,7 +195,7 @@ class I048_090_Handler final : public AsterixDataItemHandlerFixedLength {
  * @brief Handler for I048/130, Radar Plot Characteristics.
  * An optional, compund item providing quality indicators of the plot.
  */
-class I048_130_Handler final : public AsterixDataItemHandlerCompound {
+class I048_130_Handler final : public AsterixDataItemHandlerBase {
     public:
         static constexpr uint8_t FRN = 7;
 
@@ -257,16 +257,12 @@ class I048_130_Handler final : public AsterixDataItemHandlerCompound {
         APD apd;
 
         I048_130_Handler()
-            : AsterixDataItemHandlerCompound(makeVector()), srl(), srr(), sam(), prl(), pam(), rpd(), apd()
+            : AsterixDataItemHandlerBase(), srl(), srr(), sam(), prl(), pam(), rpd(), apd()
         {
             name = "I048/130 Radar Plot Characteristics (Placeholder)";
         }
 
-    private:
-        // Helper to build the vector using member addresses
-        std::vector<AsterixDataItemHandlerBase*> makeVector() {
-            return { &srl, &srr, &sam, &prl, &pam, &rpd, &apd };
-        }
+        [[nodiscard]] size_t decode(std::string_view data);
 };
 
 /**

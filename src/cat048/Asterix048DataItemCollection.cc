@@ -246,6 +246,102 @@ size_t I048_090_Handler::decode(std::string_view data) {
     return AsterixDataItemHandlerFixedLength::decode(data);
 }
 
+size_t I048_130_Handler::decode(std::string_view data) {
+    size_t indicatorLen = calculateIndicatorLen(data);
+    if (indicatorLen == 0 || indicatorLen > data.size()) return 0;
+
+    std::string_view subFieldsData = data.substr(indicatorLen);
+    size_t totalSize = indicatorLen;
+
+    uint8_t indicator = static_cast<uint8_t>(data[0]);
+
+    // Bit 8: SRL
+    if (indicator & 0x80) {
+        // Decode now returns the size. We use it to advance immediately.
+        size_t subSize = srl.decode(subFieldsData);
+
+        if (subSize == 0) return 0;
+
+        subFieldsData = subFieldsData.substr(subSize);
+        totalSize += subSize;
+    }
+
+    // Bit 7: SRR
+    if (indicator & 0x40) {
+        // Decode now returns the size. We use it to advance immediately.
+        size_t subSize = srr.decode(subFieldsData);
+
+        if (subSize == 0) return 0;
+
+        subFieldsData = subFieldsData.substr(subSize);
+        totalSize += subSize;
+    }
+
+    // Bit 6: SAM
+    if (indicator & 0x20) {
+        // Decode now returns the size. We use it to advance immediately.
+        size_t subSize = sam.decode(subFieldsData);
+
+        if (subSize == 0) return 0;
+
+        subFieldsData = subFieldsData.substr(subSize);
+        totalSize += subSize;
+    }
+
+    // Bit 5: PRL
+    if (indicator & 0x10) {
+        // Decode now returns the size. We use it to advance immediately.
+        size_t subSize = prl.decode(subFieldsData);
+
+        if (subSize == 0) return 0;
+
+        subFieldsData = subFieldsData.substr(subSize);
+        totalSize += subSize;
+    }
+
+    // Bit 4: PAM
+    if (indicator & 0x08) {
+        // Decode now returns the size. We use it to advance immediately.
+        size_t subSize = pam.decode(subFieldsData);
+
+        if (subSize == 0) return 0;
+
+        subFieldsData = subFieldsData.substr(subSize);
+        totalSize += subSize;
+    }
+
+    // Bit 3: RPD
+    if (indicator & 0x04) {
+        // Decode now returns the size. We use it to advance immediately.
+        size_t subSize = rpd.decode(subFieldsData);
+
+        if (subSize == 0) return 0;
+
+        subFieldsData = subFieldsData.substr(subSize);
+        totalSize += subSize;
+    }
+
+    // Bit 2: APD
+    if (indicator & 0x02) {
+        // Decode now returns the size. We use it to advance immediately.
+        size_t subSize = apd.decode(subFieldsData);
+
+        if (subSize == 0) return 0;
+
+        subFieldsData = subFieldsData.substr(subSize);
+        totalSize += subSize;
+    }
+
+
+    for (size_t octetIdx = 1; octetIdx < indicatorLen; ++octetIdx) {
+        uint8_t ind = static_cast<uint8_t>(data[octetIdx]);
+        if (ind > 1) return 0;
+    }
+
+    AsterixDataItemHandlerBase::decode(data);
+    return totalSize;
+}
+
 // ----------------------------------------------------------------------------------
 
 /**

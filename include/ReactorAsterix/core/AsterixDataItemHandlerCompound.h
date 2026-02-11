@@ -85,24 +85,6 @@ class AsterixDataItemHandlerCompound : public AsterixDataItemHandlerBase {
 
     protected:
         std::vector<AsterixDataItemHandlerBase*> m_subItems;
-
-    private:
-        size_t calculateIndicatorLen(std::string_view data) const {
-            size_t len = 0;
-            bool fx = true;
-
-            // While the FX bit is 1, keep counting octets
-            while (fx && len < data.size()) {
-                uint8_t octet = static_cast<uint8_t>(data[len]);
-                len++;
-                fx = (octet & 0x01); // Check if bit 0 is set
-            }
-
-            // If the last FX bit says there is more, but we ran out of data: trespass!
-            if (fx && len >= data.size()) return 0;
-
-            return len;
-        }
 };
 
 } // namespace ReactorAsterix
