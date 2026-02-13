@@ -29,10 +29,6 @@
 
 namespace ReactorAsterix {
 
-// Initialize the statics
-thread_local AsterixStatsData AsterixPacketHandler::localStats{};
-thread_local uint32_t AsterixPacketHandler::packetCount = 0;
-
 AsterixPacketHandler::~AsterixPacketHandler() {
     forceFlush();
 }

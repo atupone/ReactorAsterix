@@ -136,8 +136,8 @@ class alignas(CacheLineSize) AsterixPacketHandler {
         AsterixStats stats; // The stats object is stored here
 
         // These live in the Thread Local Storage (TLS) of EACH worker thread
-        static thread_local AsterixStatsData localStats;
-        static thread_local uint32_t packetCount;
+        AsterixStatsData localStats;
+        uint32_t packetCount = 0;
 };
 
 } // namespace ReactorAsterix
