@@ -60,6 +60,18 @@ class SourceStateManager {
         SourceStateManager() = default;
 
         /**
+         * @brief Zero-overhead lookup for the hot path.
+         * Assumes the record likely exists to avoid mutex acquisition.
+         */
+        SourceRecord* getRecordUnsafe(SourceIdentifier id) const {
+            // No lock! Just a linear scan.
+            for (auto const& record : sources_) {
+                if (record.id == id) return const_cast<SourceRecord*>(&record);
+            }
+            return nullptr;
+        }
+
+        /**
          * @brief High-performance lookup.
          * Uses linear scan which is faster than map lookup for < 100-200 entries.
          */
@@ -92,7 +104,13 @@ class SourceStateManager {
          * @param diff128th The difference (Radar TOD - Kernel Time) in 1/128s units.
          */
         inline void updateTimeOffset(const SourceIdentifier& si, int32_t diff128th) {
-            auto* record = getOrCreateRecord(si);
+            // Try the lock-free bypass first
+            SourceRecord* record = getRecordUnsafe(si);
+
+            // Slow path: Only lock if the sensor is brand new (rare)
+            if (!record) [[unlikely]] {
+                record = getOrCreateRecord(si);
+            }
 
             // 2. Lock-Free Update
             // We fetch the current count to use in the EMA calculation

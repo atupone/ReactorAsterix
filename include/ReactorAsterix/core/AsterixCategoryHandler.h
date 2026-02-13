@@ -167,8 +167,14 @@ class AsterixCategoryHandler : public IAsterixCategoryHandler {
                 return m_cachedRecord;
             }
 
+            // Try the No-Lock bypass first!
+            m_cachedRecord = sourceStateManager->getRecordUnsafe({sac, sic});
+
+            if (!m_cachedRecord) [[unlikely]] {
+                m_cachedRecord = sourceStateManager->getOrCreateRecord({sac, sic});
+            }
+
             // Only hit the shared_ptr and manager on a cache miss (rare)
-            m_cachedRecord = sourceStateManager->getOrCreateRecord({sac, sic});
             m_lastCacheKey = currentKey;
             return m_cachedRecord;
         }
