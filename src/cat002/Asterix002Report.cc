@@ -29,29 +29,6 @@
 
 namespace ReactorAsterix {
 
-bool Asterix002Report::decode_fspec(
-        std::string_view fspec,
-        std::string_view& data,
-        AsterixStatsData& stats)
-{
-    const uint8_t* raw = reinterpret_cast<const uint8_t*>(fspec.data());
-    FastBitReader reader(raw);
-    int bit = 7; // Start at MSB
-
-    // --- Octet 1 ---
-    auto octet1 = std::tie(i002_010, i002_000, i002_020, i002_030, i002_041, i002_050, i002_060);
-    if (!decode_octet_inline(reader, bit, octet1, data, stats)) return false;
-    if (!reader.readBit(bit)) return true; // FX bit: if 0, we are done
-
-    // --- Octet 2 ---
-    auto octet2 = std::tie(i002_070, i002_100, i002_090, i002_080, dummy,    dummy,    dummy);
-    if (!decode_octet_inline(reader, bit, octet2, data, stats)) return false;
-    if (!reader.readBit(bit)) return true; // FX bit: if 0, we are done
-
-    stats.uninterpretedItems++;
-    return true;
-}
-
 bool Asterix002Report::process_all_octets(
         std::string_view fspec,
         std::string_view& data,

@@ -25,8 +25,9 @@
 #include <vector>
 
 // Library headers
-#include <ReactorAsterix/core/AsterixDiagnostics.h>
+#include <ReactorAsterix/core/AsterixDataItemHandlerSP.h>
 #include <ReactorAsterix/core/AsterixDecoderUtils.h>
+#include <ReactorAsterix/core/AsterixDiagnostics.h>
 #include <ReactorAsterix/cat034/Asterix034DataItemCollection.h>
 
 namespace ReactorAsterix {
@@ -87,10 +88,31 @@ class Asterix034Report final : public AsterixReport {
         I034_090_Handler i034_090; // Collimation Error
 
     private:
-        bool decode_fspec(
+        inline bool decode_fspec(
                 std::string_view fspec,
                 std::string_view& data,
-                AsterixStatsData& stats);
+                AsterixStatsData& stats)
+        {
+            AsterixDataItemHandlerSP sp;
+            AsterixDataItemHandlerSP re;
+
+            const uint8_t* raw = reinterpret_cast<const uint8_t*>(fspec.data());
+            FastBitReader reader(raw);
+            int bit = 7; // Start at MSB
+
+            // --- Octet 1 ---
+            auto octet1 = std::tie(i034_010, i034_000, i034_030, i034_020, i034_041, i034_050, i034_060);
+            if (!decode_octet_inline(reader, bit, octet1, data, stats)) return false;
+            if (!reader.readBit(bit)) return true; // FX bit: if 0, we are done
+
+            // --- Octet 2 ---
+            auto octet2 = std::tie(i034_070, i034_100, i034_110, i034_120, i034_090, re,       sp);
+            if (!decode_octet_inline(reader, bit, octet2, data, stats)) return false;
+            if (!reader.readBit(bit)) return true; // FX bit: if 0, we are done
+
+            stats.uninterpretedItems++;
+            return true;
+        };
 };
 
 } // namespace ReactorAsterix
