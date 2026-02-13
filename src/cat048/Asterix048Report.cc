@@ -25,6 +25,8 @@
 // Library headers
 #include <ReactorAsterix/core/AsterixDecoderUtils.h>
 #include <ReactorAsterix/core/AsterixDataItemHandlerSP.h>
+#include <ReactorAsterix/core/SourceStateManager.h>
+#include <ReactorAsterix/cat048/Asterix048Handler.h>
 
 namespace ReactorAsterix {
 
@@ -65,16 +67,24 @@ bool Asterix048Report::decode_fspec(
 }
 
 bool Asterix048Report::process_all_octets(
-        std::string_view fspec, std::string_view& data,
-        AsterixStatsData& stats)
+        std::string_view fspec,
+        std::string_view& data,
+        AsterixStatsData& stats,
+        IAsterixCategoryHandler& parent)
 {
     if (!decode_fspec(fspec, data, stats)) {
         return false;
     }
 
     // 010 - Source ID side effect
-    if (i048_010.presence) {
-        setSourceIdentifier(i048_010.sac, i048_010.sic);
+    if (i048_010.presence) [[likely]] {
+        uint8_t sac = i048_010.sac;
+        uint8_t sic = i048_010.sic;
+
+        auto& concreteParent = static_cast<Asterix048Handler&>(parent);
+
+        const SourceRecord* record = concreteParent.getSourceRecordCached(sac, sic);
+        setSourceIdentifier(sac, sic, record);
     }
 
     // 020 - Abnormal checks

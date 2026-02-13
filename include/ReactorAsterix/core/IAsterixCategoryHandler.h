@@ -23,6 +23,8 @@
 #include <ctime>
 #include <string_view>
 
+#include <ReactorAsterix/core/SourceStateManager.h>
+
 namespace ReactorAsterix {
 
     struct AsterixStatsData; // Forward declaration
@@ -62,6 +64,9 @@ namespace ReactorAsterix {
                     std::string_view payload,
                     struct timespec ts,
                     AsterixStatsData& localStats) = 0;
+        protected:
+            uint16_t      m_lastCacheKey = 0;
+            SourceRecord* m_cachedRecord = nullptr;
     };
 
 } // namespace ReactorAsterix

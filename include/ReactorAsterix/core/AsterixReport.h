@@ -26,6 +26,7 @@
 
 // Library headers
 #include <ReactorAsterix/core/AsterixDiagnostics.h>
+#include <ReactorAsterix/core/IAsterixCategoryHandler.h>
 
 namespace ReactorAsterix {
 
@@ -42,7 +43,8 @@ class AsterixReport : public AsterixMessage {
         virtual bool process_all_octets(
             std::string_view fspec,
             std::string_view& data,
-            AsterixStatsData& stats) = 0;
+            AsterixStatsData& stats,
+            IAsterixCategoryHandler& parent) = 0;
 
     protected:
         /**

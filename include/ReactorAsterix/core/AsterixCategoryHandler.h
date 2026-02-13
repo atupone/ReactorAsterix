@@ -108,7 +108,7 @@ class AsterixCategoryHandler : public IAsterixCategoryHandler {
 
             std::string_view data = payload;
 
-            bool result = report.process_all_octets(fspec, data, localStats);
+            bool result = report.process_all_octets(fspec, data, localStats, *this);
 
             if (!result) [[unlikely]] {
                 return 0;
@@ -154,6 +154,23 @@ class AsterixCategoryHandler : public IAsterixCategoryHandler {
         // Default hook (can be overridden by Derived if needed)
         bool onAfterDecode(T& /*report*/, struct timespec /*ts*/) {
             return true;
+        }
+
+        /**
+         * High-speed member-based cache to replace TLS
+         */
+        const SourceRecord* getSourceRecordCached(uint8_t sac, uint8_t sic) {
+            uint16_t currentKey = (static_cast<uint16_t>(sac) << 8) | sic;
+
+            // Direct comparison - no null checks, no TLS, just raw speed
+            if (currentKey == m_lastCacheKey) [[likely]] {
+                return m_cachedRecord;
+            }
+
+            // Only hit the shared_ptr and manager on a cache miss (rare)
+            m_cachedRecord = sourceStateManager->getOrCreateRecord({sac, sic});
+            m_lastCacheKey = currentKey;
+            return m_cachedRecord;
         }
 
     protected:

@@ -47,7 +47,8 @@ class Asterix034Report final : public AsterixReport {
         bool process_all_octets(
             std::string_view fspec,
             std::string_view& data,
-            AsterixStatsData& stats);
+            AsterixStatsData& stats,
+            IAsterixCategoryHandler& parent) override;
 
         void reset();
 
