@@ -118,6 +118,20 @@ int main(int argc, char** argv) {
     }
 
     std::cout << "Replay finished." << std::endl;
+
+    asterixHandler.forceFlush();
+
+    auto stats = asterixHandler.getStats().snapshot();
+    std::cout << "Processed packets: " << stats.totalPackets << std::endl;
+    std::cout << "trailingBytesCount: " << stats.trailingBytesCount << std::endl;
+    std::cout << "unhandledCategories: " << stats.unhandledCategories << std::endl;
+    std::cout << "malformedBlocks: " << stats.malformedBlocks << std::endl;
+    std::cout << "malformedRecords: " << stats.malformedRecords << std::endl;
+    std::cout << "recordParseErrors: " << stats.recordParseErrors << std::endl;
+    std::cout << "protocolViolations: " << stats.protocolViolations << std::endl;
+    std::cout << "unhandledItems: " << stats.unhandledItems << std::endl;
+    std::cout << "uninterpretedItems: " << stats.uninterpretedItems << std::endl;
+
     return 0;
 }
 
