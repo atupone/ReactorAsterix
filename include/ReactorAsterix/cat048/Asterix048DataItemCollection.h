@@ -101,7 +101,16 @@ class I048_020_Handler final : public AsterixDataItemHandlerExtendedLength {
          * @param data The raw data buffer.
          */
         [[nodiscard]] size_t decode(std::string_view data) override;
-        void reset();
+
+        inline void reset() {
+            AsterixDataItemHandlerExtendedLength::reset();
+            typ = TYP_T::NO_DETECTION;
+            sim = false;
+            spi = false;
+            rab = false;
+            tst = false;
+            me  = false;
+        };
 
         // Enumeration for TYP
         enum class TYP_T : uint8_t {

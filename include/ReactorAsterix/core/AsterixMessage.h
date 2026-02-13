@@ -37,7 +37,10 @@ class AsterixMessage {
         AsterixMessage() = default;
         virtual ~AsterixMessage() = default;
 
-        void reset();
+        inline void reset() {
+            // Reset the pointer to the Source Record used for time synchronization
+            sourceRecord = nullptr;
+        };
 
         // Temporary link to the manager, set by the Handler at creation
         SourceStateManager* manager = nullptr;

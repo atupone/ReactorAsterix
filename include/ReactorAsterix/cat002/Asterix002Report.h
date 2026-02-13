@@ -50,7 +50,22 @@ class Asterix002Report final : public AsterixReport {
             AsterixStatsData& stats,
             IAsterixCategoryHandler& parent) override;
 
-        void reset();
+        inline void reset() {
+            // Reset common base fields (SourceIdentifier, TOD, etc.)
+            AsterixReport::reset();
+
+            i002_010.reset();
+            i002_000.reset();
+            i002_020.reset();
+            i002_030.reset();
+            i002_041.reset();
+            i002_050.reset();
+            i002_060.reset();
+            i002_070.reset();
+            i002_100.reset();
+            i002_090.reset();
+            i002_080.reset();
+        };
 
         // --- Data Items (Standard Cat 002) ---
 

@@ -80,24 +80,6 @@ bool Asterix034Report::process_all_octets(
     return true;
 }
 
-void Asterix034Report::reset() {
-    // Reset common base fields (SourceIdentifier, TOD, etc.)
-    AsterixReport::reset();
-
-    i034_010.reset();
-    i034_000.reset();
-    i034_030.reset();
-    i034_020.reset();
-    i034_041.reset();
-    i034_050.reset();
-    i034_060.reset();
-    i034_070.reset();
-    i034_100.reset();
-    i034_110.reset();
-    i034_120.reset();
-    i034_090.reset();
-}
-
 } // namespace ReactorAsterix
 
 
