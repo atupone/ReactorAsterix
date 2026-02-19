@@ -51,9 +51,9 @@ class Asterix048Report;
 class I048_010_Handler final : public AsterixDataItemHandlerFixedLength {
     public:
         static constexpr uint8_t FRN = 1;
-        static constexpr bool mandatory = true;
         I048_010_Handler() : AsterixDataItemHandlerFixedLength(2) {
             name = "I048/010 Data Source Identifier";
+            mandatory = true;
         }
 
         /**
@@ -75,9 +75,9 @@ class I048_010_Handler final : public AsterixDataItemHandlerFixedLength {
 class I048_140_Handler final : public AsterixDataItemHandlerFixedLength {
     public:
         static constexpr uint8_t FRN = 2;
-        static constexpr bool mandatory = false;
         I048_140_Handler(): AsterixDataItemHandlerFixedLength(3) {
             name = "I048/140, Time of Day";
+            mandatory = true;
         }
 
         [[nodiscard]] size_t decode(std::string_view data) override;
@@ -92,9 +92,9 @@ class I048_140_Handler final : public AsterixDataItemHandlerFixedLength {
 class I048_020_Handler final : public AsterixDataItemHandlerExtendedLength {
     public:
         static constexpr uint8_t FRN = 3;
-        static constexpr bool mandatory = true;
         I048_020_Handler() : AsterixDataItemHandlerExtendedLength(1, 1) {
             name = "I048/020 Target Report Descriptor";
+            mandatory = true;
         }
         /**
          * @brief Decodes the Target Report Descriptor (TRT, SPI, EMG, etc.).
@@ -139,7 +139,6 @@ class I048_020_Handler final : public AsterixDataItemHandlerExtendedLength {
 class I048_040_Handler final : public AsterixDataItemHandlerFixedLength {
     public:
         static constexpr uint8_t FRN = 4;
-        static constexpr bool mandatory = false;
         I048_040_Handler() : AsterixDataItemHandlerFixedLength(4) {
             name = "I048/040 Measured Position in Polar Coordinates";
         };
@@ -281,7 +280,6 @@ class I048_130_Handler final : public AsterixDataItemHandlerBase {
 class I048_220_Handler final : public AsterixDataItemHandlerFixedLength {
     public:
         static constexpr uint8_t FRN = 8;
-        static constexpr bool mandatory = false;
         I048_220_Handler() : AsterixDataItemHandlerFixedLength(3) {
             name = "I048/220 Aircraft Address";
         }
@@ -294,7 +292,6 @@ class I048_220_Handler final : public AsterixDataItemHandlerFixedLength {
 class I048_240_Handler final : public AsterixDataItemHandlerFixedLength {
     public:
         static constexpr uint8_t FRN = 9;
-        static constexpr bool mandatory = false;
         I048_240_Handler() : AsterixDataItemHandlerFixedLength(6) {
             name = "I048/240 Aircraft Identification";
         }
@@ -307,7 +304,6 @@ class I048_240_Handler final : public AsterixDataItemHandlerFixedLength {
 class I048_250_Handler final : public AsterixDataItemHandlerRepetitive {
     public:
         static constexpr uint8_t FRN = 10;
-        static constexpr bool mandatory = false;
         I048_250_Handler() : AsterixDataItemHandlerRepetitive(8) {
             name = "I048/250 Mode S MB Data";
         }
@@ -319,7 +315,6 @@ class I048_250_Handler final : public AsterixDataItemHandlerRepetitive {
 class I048_161_Handler final : public AsterixDataItemHandlerFixedLength {
     public:
         static constexpr uint8_t FRN = 11;
-        static constexpr bool mandatory = false;
         I048_161_Handler(): AsterixDataItemHandlerFixedLength(2) {
             name = "I048/161, Track Number";
         }
@@ -331,7 +326,6 @@ class I048_161_Handler final : public AsterixDataItemHandlerFixedLength {
 class I048_042_Handler final : public AsterixDataItemHandlerFixedLength {
     public:
         static constexpr uint8_t FRN = 12;
-        static constexpr bool mandatory = false;
         I048_042_Handler(): AsterixDataItemHandlerFixedLength(4) {
             name = "I048/042, Calculated Position in Cartesian Co-ordinates";
         }
@@ -343,7 +337,6 @@ class I048_042_Handler final : public AsterixDataItemHandlerFixedLength {
 class I048_200_Handler final : public AsterixDataItemHandlerFixedLength {
     public:
         static constexpr uint8_t FRN = 13;
-        static constexpr bool mandatory = false;
         I048_200_Handler(): AsterixDataItemHandlerFixedLength(4) {
             name = "I048/200, Calculated Track Velocity in Polar Co-ordinates";
         }
@@ -355,7 +348,6 @@ class I048_200_Handler final : public AsterixDataItemHandlerFixedLength {
 class I048_170_Handler final : public AsterixDataItemHandlerExtendedLength {
     public:
         static constexpr uint8_t FRN = 14;
-        static constexpr bool mandatory = false;
         I048_170_Handler() : AsterixDataItemHandlerExtendedLength(1, 1) {
             name = "I048/170, Track Status";
         }
@@ -404,7 +396,6 @@ class I048_080_Handler final : public AsterixDataItemHandlerFixedLength {
 class I048_100_Handler final : public AsterixDataItemHandlerFixedLength {
     public:
         static constexpr uint8_t FRN = 18;
-        static constexpr bool mandatory = false;
         I048_100_Handler() : AsterixDataItemHandlerFixedLength(4) {
             name = "I048/100 Mode-C Code and Confidence Indicator";
         }
@@ -417,7 +408,6 @@ class I048_100_Handler final : public AsterixDataItemHandlerFixedLength {
 class I048_110_Handler final : public AsterixDataItemHandlerFixedLength {
     public:
         static constexpr uint8_t FRN = 19;
-        static constexpr bool mandatory = false;
         I048_110_Handler() : AsterixDataItemHandlerFixedLength(2) {
             name = "I048/110 Height measured by a 3D Radar";
         }
@@ -476,7 +466,6 @@ class I048_120_Handler final : public AsterixDataItemHandlerCompound {
 class I048_230_Handler final : public AsterixDataItemHandlerFixedLength {
     public:
         static constexpr uint8_t FRN = 21;
-        static constexpr bool mandatory = false;
         I048_230_Handler() : AsterixDataItemHandlerFixedLength(2) {
             name = "I048/230 Communication/ACAS Capability and Flight Status";
         }

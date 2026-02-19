@@ -50,9 +50,9 @@ class Asterix034Report;
 class I034_010_Handler final : public AsterixDataItemHandlerFixedLength {
     public:
         static constexpr uint8_t FRN = 1;
-        static constexpr bool mandatory = true;
         I034_010_Handler() : AsterixDataItemHandlerFixedLength(2) {
             name = "I034/010 Data Source Identifier";
+            mandatory = true;
         }
 
         /**
@@ -73,9 +73,9 @@ class I034_010_Handler final : public AsterixDataItemHandlerFixedLength {
 class I034_000_Handler final: public AsterixDataItemHandlerFixedLength {
     public:
         static constexpr uint8_t FRN = 2;
-        static constexpr bool mandatory = true;
         I034_000_Handler() : AsterixDataItemHandlerFixedLength(1) {
             name = "I034/000, Message Type";
+            mandatory = true;
         }
 
         [[nodiscard]] size_t decode(std::string_view data) override;
@@ -102,9 +102,9 @@ class I034_000_Handler final: public AsterixDataItemHandlerFixedLength {
 class I034_030_Handler final : public AsterixDataItemHandlerFixedLength {
     public:
         static constexpr uint8_t FRN = 3;
-        static constexpr bool mandatory = false;
         I034_030_Handler(): AsterixDataItemHandlerFixedLength(3) {
             name = "I034/030, Time of Day";
+            mandatory = true;
         }
         [[nodiscard]] size_t decode(std::string_view data) override;
 

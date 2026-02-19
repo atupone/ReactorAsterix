@@ -155,7 +155,7 @@ if(BUILD_TESTING)
 
         find_package(GTest)
 
-        add_executable(unit_tests tests/test_cat001.cc)
+        add_executable(unit_tests tests/test_cat001.cc tests/test_mandatory.cc tests/test_mandatory.cc)
         target_link_libraries(unit_tests PRIVATE ReactorAsterix GTest::gtest_main)
         add_test(NAME AllTests COMMAND unit_tests)
 endif()

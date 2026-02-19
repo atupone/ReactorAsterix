@@ -63,7 +63,7 @@ class AsterixDataItemHandlerBase : public IAsterixDataItemHandler {
          */
         std::string_view getName() const override { return name; };
 
-        static constexpr bool mandatory = false; // Default: items are optional
+        bool mandatory = false; // Default: items are optional
 
     protected:
         size_t calculateIndicatorLen(std::string_view data) const {

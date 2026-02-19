@@ -54,6 +54,7 @@ template <typename T>
         if (!item.presence) {
             if (item.isMandatory()) {
                 stats.protocolViolations++;
+                return false;
             }
             return true;
         }
