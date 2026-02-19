@@ -68,19 +68,17 @@ class AsterixDataItemHandlerBase : public IAsterixDataItemHandler {
     protected:
         size_t calculateIndicatorLen(std::string_view data) const {
             size_t len = 0;
-            bool fx = true;
 
             // While the FX bit is 1, keep counting octets
-            while (fx && len < data.size()) {
-                uint8_t octet = static_cast<uint8_t>(data[len]);
+            for (char c : data) {
                 len++;
-                fx = (octet & 0x01); // Check if bit 0 is set
+                if (!(static_cast<uint8_t>(c) & 0x01)) { // If FX bit is 0, we are done
+                    return len;
+                }
             }
 
             // If the last FX bit says there is more, but we ran out of data: trespass!
-            if (fx && len >= data.size()) return 0;
-
-            return len;
+            return 0;
         }
 
         std::string_view name;
