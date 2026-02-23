@@ -114,7 +114,7 @@ class I048_020_Handler final : public AsterixDataItemHandlerExtendedLength {
 
         // Enumeration for TYP
         enum class TYP_T : uint8_t {
-            NO_DETECTION = 0,
+            NO_DETECTION           = 0,
             SINGLE_PSR_DETECTION   = 1,
             SINGLE_SSR_DETECTION   = 2,
             SSR_PSR_DETECTION      = 3,
@@ -124,12 +124,40 @@ class I048_020_Handler final : public AsterixDataItemHandlerExtendedLength {
             MODES_ROLL_CALL_PSR    = 7
         };
 
+        // Enumeration for FOE/FRI
+        enum class FOE_FRI_T : uint8_t {
+            NO_MODE4_INTERROGATION = 0,
+            FRIENDLY_TARGET        = 1,
+            UNKNOWN_TARGET         = 2,
+            NO_REPLY               = 3
+        };
+
+        struct EP_VAL_T {
+            bool ep;
+            uint8_t val;
+        };
+
         TYP_T typ{TYP_T::NO_DETECTION};
         bool  sim{false};
+        bool  rdp{false};
         bool  spi{false};
         bool  rab{false};
         bool  tst{false};
+        bool  err{false};
+        bool  xpp{false};
         bool  me{false};
+        bool  mi{false};
+        FOE_FRI_T foe_fri{FOE_FRI_T::NO_MODE4_INTERROGATION};
+        EP_VAL_T adsb{false, 0};
+        EP_VAL_T scn{false, 0};
+        EP_VAL_T pai{false, 0};
+        EP_VAL_T acasxv{false, 0};
+        EP_VAL_T poxpr{false, 0};
+        EP_VAL_T poact{false, 0};
+        EP_VAL_T dtfxpr{false, 0};
+        EP_VAL_T dtfact{false, 0};
+        EP_VAL_T irmpr{false, 0};
+        EP_VAL_T irmact{false, 0};
 };
 
 /**

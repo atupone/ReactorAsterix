@@ -93,8 +93,8 @@ size_t I048_020_Handler::decode(std::string_view data) {
     // Decode the SIM bit (Simulation - bits 5).
     sim = reader.readBit(bit);
 
-    // skip the RDP bit (Radar Display Processor Chain - bits 4).
-    reader.skipBits(bit, 1);
+    // Decode the RDP bit (Radar Display Processor Chain - bits 4).
+    rdp = reader.readBit(bit);
 
     // Decode the SPI bit (Special Position Identification - bit 3).
     spi = reader.readBit(bit);
@@ -114,31 +114,111 @@ size_t I048_020_Handler::decode(std::string_view data) {
         // Decode TST bit (Test, bit 8 2nd byte)
         tst = reader.readBit(bit);
 
-        // skip the ERR and XPP bit (Extended Range, X-Pulse - bits 7-6).
-        reader.skipBits(bit, 2);
+        // decode ERR bit (Extended Range, bits 7).
+        err = reader.readBit(bit);
 
-        me = reader.readBit(bit);
+        // decode XPP bit (X-Pulse - bits 6).
+        xpp = reader.readBit(bit);
 
-        reader.skipBits(bit, 3);
+        me = reader.readBit(bit); // Bit 5: Military Emergency
+
+        mi = reader.readBit(bit); // Bit 4: Military Identification
+
+        // Bits 3-2: FOE/FRI (Mode 4 interrogation)
+        foe_fri = static_cast<FOE_FRI_T>(reader.readBits<2>(bit));
 
         // Check the FX bit (bit 0) of the second octet for the third octet.
         fx = reader.readBit(bit);
 
         consumed++; // Now we've finished 2 bytes
 
-        // Extended Chain
-        while (fx) {
-            // Before we move to the next byte, we check if it exists.
-            // 'consumed' currently holds the count of bytes ALREADY read.
-            // If 'consumed' equals 'data.size()', there is no next byte.
+        if (fx) {
             if (consumed >= data.size()) return 0;
 
-            // We only care about the FX bit in subsequent octets
-            reader.skipBits(bit, 7);
-            fx = reader.readBit(bit);
+            // --- Third Octet (EP_VAL fields) ---
+            // ADSB: Bit 8 (EP) and Bit 7 (Value)
+            adsb.ep  = reader.readBit(bit);
+            adsb.val = static_cast<uint8_t>(reader.readBit(bit));
 
-            // We successfully finished another byte
+            // SCN: Bit 6 (EP) and Bit 5 (Value)
+            scn.ep   = reader.readBit(bit);
+            scn.val  = static_cast<uint8_t>(reader.readBit(bit));
+
+            // PAI: Bit 4 (EP) and Bit 3 (Value)
+            pai.ep   = reader.readBit(bit);
+            pai.val  = static_cast<uint8_t>(reader.readBit(bit));
+
+            reader.skipBits(bit, 1); // Bit 2 (Spare)
+
+            fx = reader.readBit(bit); // Bit 1: Extension
             consumed++;
+
+            if (fx) {
+                if (consumed >= data.size()) return 0;
+
+                // --- Fourth Octet (EP_VAL fields) ---
+                // ACASXV: 1 bit for EP, 4 bits for VAL (Total 5 bits)
+                acasxv.ep  = reader.readBit(bit);
+                acasxv.val = static_cast<uint8_t>(reader.readBits<4>(bit));
+
+                // POXPR: 1 bit for EP, 1 bit for VAL (Total 2 bits)
+                poxpr.ep  = static_cast<uint8_t>(reader.readBit(bit));
+                poxpr.val = static_cast<uint8_t>(reader.readBit(bit));
+
+                fx = reader.readBit(bit);
+                consumed++;
+
+                if (fx) {
+                    if (consumed >= data.size()) return 0;
+
+                    // --- Fifth Octet ---
+                    // Bits 8-7: POACT (EP + VAL)
+                    poact.ep  = reader.readBit(bit);         // Bit 8
+                    poact.val = static_cast<uint8_t>(reader.readBit(bit));  // Bit 7
+
+                    // Bits 6-5: DTFXPR (EP + VAL)
+                    dtfxpr.ep  = reader.readBit(bit);        // Bit 6
+                    dtfxpr.val = static_cast<uint8_t>(reader.readBit(bit)); // Bit 5
+
+                    // Bits 4-3: DTFACT (EP + VAL)
+                    dtfact.ep  = reader.readBit(bit);        // Bit 4
+                    dtfact.val = static_cast<uint8_t>(reader.readBit(bit)); // Bit 3
+
+                    // Bit 2: Spare (set to 0)
+                    reader.skipBits(bit, 1);                 // Bit 2
+
+                    // Bit 1: FX Extension bit
+                    fx = reader.readBit(bit);                 // Bit 1
+                    consumed++;
+
+                    if (fx) {
+                        if (consumed >= data.size()) return 0;
+                        irmpr.ep   = reader.readBit(bit);    // Bit 8
+                        irmpr.val  = static_cast<uint8_t>(reader.readBit(bit)); // Bit 7
+                        irmact.ep  = reader.readBit(bit);    // Bit 6
+                        irmact.val = static_cast<uint8_t>(reader.readBit(bit)); // Bit 5
+
+                        reader.skipBits(bit, 3);             // Spares
+                        fx = reader.readBit(bit);            // Bit 1
+                        consumed++;
+
+                        // Extended Chain
+                        while (fx) {
+                            // Before we move to the next byte, we check if it exists.
+                            // 'consumed' currently holds the count of bytes ALREADY read.
+                            // If 'consumed' equals 'data.size()', there is no next byte.
+                            if (consumed >= data.size()) return 0;
+
+                            // We only care about the FX bit in subsequent octets
+                            reader.skipBits(bit, 7);
+                            fx = reader.readBit(bit);
+
+                            // We successfully finished another byte
+                            consumed++;
+                        }
+                    }
+                }
+            }
         }
     }
 
