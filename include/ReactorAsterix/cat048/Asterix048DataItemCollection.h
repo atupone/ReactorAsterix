@@ -357,6 +357,11 @@ class I048_042_Handler final : public AsterixDataItemHandlerFixedLength {
         I048_042_Handler(): AsterixDataItemHandlerFixedLength(4) {
             name = "I048/042, Calculated Position in Cartesian Co-ordinates";
         }
+
+        [[nodiscard]] size_t decode(std::string_view data) override;
+
+        int16_t x;
+        int16_t y;
 };
 
 /**
@@ -403,6 +408,54 @@ class I048_030_Handler final : public AsterixDataItemHandlerExtendedLength {
         I048_030_Handler() : AsterixDataItemHandlerExtendedLength(1, 1) {
             name = "I048/030 Warning/Error Conditions";
         }
+
+        enum class WarningCode : uint8_t {
+            // --- Warning/Error Conditions ---
+            MULTIPATH_REPLY                      = 1,
+            SIDELOBE_REPLY                       = 2,
+            SPLIT_PLOT                           = 3,
+            NON_EXPECTED_REPLY                   = 4,
+            ANGEL                                = 5,
+            TERRESTRIAL_VEHICLE                  = 6,
+            FIXED_PSR_PLOT                       = 7,
+            SLOW_PSR_TARGET                      = 8,
+            LOW_QUALITY_PSR_PLOT                 = 9,
+            PHANTOM_SSR_PLOT                     = 10,
+            NON_MATCHING_MODE_3A                 = 11,
+            MODE_C_S_ALTITUDE_ABNORMAL           = 12,
+            TARGET_IN_CLUTTER_AREA               = 13,
+            MAX_DOPPLER_RESPONSE_ZERO_FILTER     = 14,
+            TRANSPONDER_ANOMALY                  = 15,
+            DUPLICATED_OR_ILLEGAL_MODE_S_ADDR    = 16,
+            MODE_S_ERROR_CORRECTION_APPLIED      = 17,
+            UNDECODABLE_MODE_C_S_ALTITUDE        = 18,
+            BIRDS                                = 19,
+            FLOCK_OF_BIRDS                       = 20,
+            MODE_1_PRESENT_IN_REPLY              = 21,
+            MODE_2_PRESENT_IN_REPLY              = 22,
+            WIND_TURBINE_PLOT                    = 23,
+            HELICOPTER                           = 24,
+            MAX_REINTERROGATIONS_REACHED         = 25,
+            MAX_REINTERROGATIONS_BDS_EXTRACTION  = 26,
+            BDS_OVERLAY_INCOHERENCE              = 27,
+            POTENTIAL_BDS_SWAP_DETECTED          = 28,
+            TRACK_UPDATE_IN_ZENITHAL_GAP         = 29,
+            MODE_S_TRACK_REACQUIRED              = 30,
+            DUPLICATED_MODE_5_PAIR_NO_PIN        = 31,
+            WRONG_DF_REPLY_FORMAT                = 32,
+            TRANSPONDER_ANOMALY_ALL_CALL         = 33,
+            TRANSPONDER_ANOMALY_SI_CAPABILITY    = 34,
+            POTENTIAL_IC_CONFLICT                = 35,
+            IC_CONFLICT_DETECTION_POSSIBLE       = 36,
+            DUPLICATE_MODE_5_PIN                 = 37
+        };
+
+        std::vector<WarningCode> codes;
+
+        size_t decode(std::string_view data) override;
+        inline void reset() {
+            codes.clear();
+        }
 };
 
 /**
@@ -415,6 +468,10 @@ class I048_080_Handler final : public AsterixDataItemHandlerFixedLength {
         I048_080_Handler() : AsterixDataItemHandlerFixedLength(2) {
             name = "I048/080 Mode-3/A Code Confidence Indicator";
         }
+
+        [[nodiscard]] size_t decode(std::string_view data) override;
+
+        uint16_t confidenceMask{0}; // 12 bits of confidence (0=High, 1=Low)
 };
 
 /**
@@ -427,6 +484,13 @@ class I048_100_Handler final : public AsterixDataItemHandlerFixedLength {
         I048_100_Handler() : AsterixDataItemHandlerFixedLength(4) {
             name = "I048/100 Mode-C Code and Confidence Indicator";
         }
+
+        [[nodiscard]] size_t decode(std::string_view data) override;
+
+        bool validated{false};
+        bool garbled{false};
+        uint16_t grayCode{0};
+        uint16_t confidence{0};
 };
 
 /**
@@ -521,6 +585,13 @@ class I048_055_Handler final : public AsterixDataItemHandlerFixedLength {
         I048_055_Handler() : AsterixDataItemHandlerFixedLength(1) {
             name = "I048/055 Mode-1 Code in Octal Representation";
         }
+
+        [[nodiscard]] size_t decode(std::string_view data) override;
+
+        bool validated{false};
+        bool garbled{false};
+        bool local{false};
+        uint8_t code{0};
 };
 
 /**
@@ -533,6 +604,17 @@ class I048_050_Handler final : public AsterixDataItemHandlerFixedLength {
         I048_050_Handler() : AsterixDataItemHandlerFixedLength(2) {
             name = "I048/050 Mode-2 Code in Octal Representation";
         }
+
+        /**
+         * @brief Decodes the 2-byte Mode-2 code.
+         * @param data The raw data buffer.
+         */
+        [[nodiscard]] size_t decode(std::string_view data) override;
+
+        uint16_t code{0};
+        bool validated{false};
+        bool garbled{false};
+        bool local{false};
 };
 
 /**
@@ -545,6 +627,10 @@ class I048_065_Handler final : public AsterixDataItemHandlerFixedLength {
         I048_065_Handler() : AsterixDataItemHandlerFixedLength(1) {
             name = "I048/065 Mode-1 Code Confidence Indicator";
         }
+
+        [[nodiscard]] size_t decode(std::string_view data) override;
+
+        uint8_t confidenceMask{0}; // 5 bits of confidence indicators
 };
 
 /**
@@ -557,6 +643,10 @@ class I048_060_Handler final : public AsterixDataItemHandlerFixedLength {
         I048_060_Handler() : AsterixDataItemHandlerFixedLength(2) {
             name = "I048/060 Mode-2 Code Confidence Indicator";
         }
+
+        [[nodiscard]] size_t decode(std::string_view data) override;
+
+        uint16_t confidenceMask{0}; // 12 bits of confidence indicators
 };
 
 } // namespace ReactorAsterix

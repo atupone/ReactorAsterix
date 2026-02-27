@@ -412,6 +412,85 @@ size_t I048_130_Handler::decode(std::string_view data) {
     return totalSize;
 }
 
+/**
+ * @brief Handler for ASTERIX Data Item I048/042, Calculated Position in Cartesian Co-ordinates.
+ * * This item provides the calculated position in 1/128 NM increments.
+ * The values are 16-bit signed integers.
+ */
+size_t I048_042_Handler::decode(std::string_view data) {
+    if (data.size() < fixedSize) return 0;
+
+    // Read X and Y as signed 16-bit integers (Big Endian)
+    // Read as unsigned first to satisfy ntohs, then cast to signed int16_t
+    x = static_cast<int16_t>(readBigEndian<uint16_t>(data.data()));
+    y = static_cast<int16_t>(readBigEndian<uint16_t>(data.data() + 2));
+
+    return AsterixDataItemHandlerFixedLength::decode(data);
+}
+
+size_t I048_030_Handler::decode(std::string_view data) {
+    const uint8_t* raw = reinterpret_cast<const uint8_t*>(data.data());
+    FastBitReader reader(raw);
+    int bit = 7;
+    size_t consumed = 0;
+    bool fx = true;
+
+     while (fx && consumed < data.size()) {
+         // Read 7 bits for the code
+         uint8_t val = static_cast<uint8_t>(reader.readBits<7>(bit));
+         codes.push_back(static_cast<WarningCode>(val));
+
+         // Read the FX bit (Bit 1)
+         fx = reader.readBit(bit);
+         consumed++;
+     }
+
+     AsterixDataItemHandlerBase::decode(data);
+     return consumed;
+}
+
+/**
+ * @brief Handler for I048/080, Mode-3/A Code Confidence Indicator.
+ * Extracts the 12-bit confidence mask from the 2-byte field.
+ */
+size_t I048_080_Handler::decode(std::string_view data) {
+    if (data.size() < fixedSize) return 0;
+
+    // Read the 16-bit block as unsigned
+    auto rawValue = readBigEndian<uint16_t>(data.data());
+
+    // Mask out the 4 spare bits (16-13) to isolate the 12 confidence bits
+    confidenceMask = rawValue & 0x0FFF;
+
+    return AsterixDataItemHandlerFixedLength::decode(data);
+}
+
+/**
+ * @brief Handler for I048/100 Mode-C Gillham Code and Confidence.
+ * Octet 1-2: V G 0 0 C1 A1 C2 A2 C4 A4 B1 D1 B2 D2 B4 D4
+ * Octet 3-4: 0 0 0 0 QC1 QA1 QC2 QA2 QC4 QA4 QB1 QD1 QB2 QD2 QB4 QD4
+ */
+size_t I048_100_Handler::decode(std::string_view data) {
+    if (data.size() < fixedSize) return 0;
+
+    // Use uint16_t to read octets 1-2 and 3-4
+    uint16_t firstHalf = readBigEndian<uint16_t>(data.data());
+    uint16_t secondHalf = readBigEndian<uint16_t>(data.data() + 2);
+
+    // Status bits from the first half
+    validated = (firstHalf & 0x8000) == 0; // Bit 32: 0=Validated
+    garbled   = (firstHalf & 0x4000) != 0; // Bit 31: 1=Garbled
+
+    // Extract the 12-bit Gillham Code (Bits 28-17)
+    grayCode = firstHalf & 0x0FFF;
+
+    // Extract the 12-bit Confidence Indicators (Bits 12-1)
+    // 0 = High confidence, 1 = Low confidence
+    confidence = secondHalf & 0x0FFF;
+
+    return AsterixDataItemHandlerFixedLength::decode(data);
+}
+
 // ----------------------------------------------------------------------------------
 
 /**
@@ -438,6 +517,85 @@ size_t I048_110_Handler::decode(std::string_view data) {
     }
 
     height = static_cast<int16_t>(flightLevelTemp);
+
+    return AsterixDataItemHandlerFixedLength::decode(data);
+}
+
+/**
+ * @brief Handler for ASTERIX Data Item I048/055, Mode-1 Code.
+ * According to Edition 1.32:
+ * Bit-8 (V): 0 = Validated, 1 = Not Validated
+ * Bit-7 (G): 0 = Default, 1 = Garbled
+ * Bit-6 (L): 0 = Default, 1 = Local
+ * Bits 5-1: Mode-1 Code (Octal digits A and B)
+ */
+size_t I048_055_Handler::decode(std::string_view data) {
+    if (data.size() < fixedSize) return 0;
+
+    const uint8_t* raw = reinterpret_cast<const uint8_t*>(data.data());
+    FastBitReader reader(raw);
+    int bit = 7; // Start at MSB (Bit 8)
+
+    // Decode status bits
+    validated = !reader.readBit(bit);
+    garbled   = reader.readBit(bit);
+    local     = reader.readBit(bit);
+
+    // Extract remaining 5 bits for the code
+    code = static_cast<uint8_t>(reader.readBits<5>(bit));
+
+    return AsterixDataItemHandlerFixedLength::decode(data);
+}
+
+/**
+ * @brief Handler for ASTERIX Data Item I048/050, Mode-2 Code.
+ * Bits 16-14: Status (V, G, L)
+ * Bits 12-1: 12-bit octal code
+ */
+size_t I048_050_Handler::decode(std::string_view data) {
+    if (data.size() < fixedSize) return 0;
+
+    const uint8_t* raw = reinterpret_cast<const uint8_t*>(data.data());
+    FastBitReader reader(raw);
+    int bit = 7;
+
+    // Bit-16 (V): 0 = Validated, 1 = Not Validated
+    validated = !reader.readBit(bit);
+    // Bit-15 (G): 0 = Default, 1 = Garbled code
+    garbled   = reader.readBit(bit);
+    // Bit-14 (L): 0 = Default, 1 = Local network code
+    local     = reader.readBit(bit);
+
+    // Read the 16-bit block as unsigned to keep the compiler happy
+    auto rawValue = readBigEndian<uint16_t>(data.data());
+    // Mask out the status bits to get the 12-bit octal code
+    code = rawValue & 0x0FFF;
+
+    return AsterixDataItemHandlerFixedLength::decode(data);
+}
+
+size_t I048_065_Handler::decode(std::string_view data) {
+    if (data.size() < fixedSize) return 0;
+
+    // Bits 8-6 are Spare. Bits 5-1 are the confidence indicators.
+    confidenceMask = static_cast<uint8_t>(data[0]) & 0x1F;
+
+    return AsterixDataItemHandlerFixedLength::decode(data);
+}
+
+/**
+ * @brief Handler for ASTERIX Data Item I048/060, Mode-2 Code Confidence Indicator.
+ * Bits 16-13: Spare
+ * Bits 12-1: Confidence indicators for each bit of the Mode-2 code.
+ */
+size_t I048_060_Handler::decode(std::string_view data) {
+    if (data.size() < fixedSize) return 0;
+
+    // Read the 16-bit block as unsigned to avoid warnings.
+    auto rawValue = readBigEndian<uint16_t>(data.data());
+
+    // Mask out the spare bits (16, 15, 14, 13) to isolate the 12-bit array.
+    confidenceMask = rawValue & 0x0FFF;
 
     return AsterixDataItemHandlerFixedLength::decode(data);
 }
