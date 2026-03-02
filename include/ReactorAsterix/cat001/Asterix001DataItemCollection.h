@@ -92,7 +92,6 @@ class I001_020_Handler final : public AsterixDataItemHandlerExtendedLength {
             ds1ds2 = DS1DS2_T::DEFAULT;
             me = false;
             mi = false;
-            extra = false;
         };
 
         // Enumeration for SSR/PSR
@@ -121,8 +120,6 @@ class I001_020_Handler final : public AsterixDataItemHandlerExtendedLength {
         DS1DS2_T ds1ds2{DS1DS2_T::DEFAULT};
         bool me{false};
         bool mi{false};
-
-        bool extra{false};
 };
 
 /**

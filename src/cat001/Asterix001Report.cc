@@ -68,9 +68,6 @@ bool Asterix001Report::process_all_octets(
     if (i001_020.mi) {
         stats.uninterpretedItems++;
     }
-    if (i001_020.extra) {
-        stats.uninterpretedItems++;
-    }
 
     return true;
 }
