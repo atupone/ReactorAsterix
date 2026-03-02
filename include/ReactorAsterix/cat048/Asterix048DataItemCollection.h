@@ -233,15 +233,21 @@ class I048_090_Handler final : public AsterixDataItemHandlerFixedLength {
  * @brief Handler for I048/130, Radar Plot Characteristics.
  * An optional, compund item providing quality indicators of the plot.
  */
-class I048_130_Handler final : public AsterixDataItemHandlerBase {
+class I048_130_Handler final : public AsterixDataItemHandlerCompound {
     public:
         static constexpr uint8_t FRN = 7;
+
+        I048_130_Handler();
 
         class SRL final : public AsterixDataItemHandlerFixedLength {
             public:
                 SRL() : AsterixDataItemHandlerFixedLength(1) {
                     name = "SSR Plot Runlength";
                 }
+
+                [[nodiscard]] size_t decode(std::string_view data) override;
+
+                uint8_t ssrRunlength{0};
         };
 
         class SRR final : public AsterixDataItemHandlerFixedLength {
@@ -249,6 +255,10 @@ class I048_130_Handler final : public AsterixDataItemHandlerBase {
                 SRR() : AsterixDataItemHandlerFixedLength(1) {
                     name = "Number of Received Replies for (M)SSR";
                 }
+
+                [[nodiscard]] size_t decode(std::string_view data) override;
+
+                uint8_t numSsrReplies{0};
         };
 
         class SAM final : public AsterixDataItemHandlerFixedLength {
@@ -256,6 +266,10 @@ class I048_130_Handler final : public AsterixDataItemHandlerBase {
                 SAM() : AsterixDataItemHandlerFixedLength(1) {
                     name = "Amplitude of (M)SSR reply";
                 }
+
+                [[nodiscard]] size_t decode(std::string_view data) override;
+
+                int8_t ssrReplyAmplitude{0};
         };
 
         class PRL final : public AsterixDataItemHandlerFixedLength {
@@ -263,6 +277,10 @@ class I048_130_Handler final : public AsterixDataItemHandlerBase {
                 PRL() : AsterixDataItemHandlerFixedLength(1) {
                     name = "Primary Plot Runlength";
                 }
+
+                [[nodiscard]] size_t decode(std::string_view data) override;
+
+                uint8_t psrRunlength{0};
         };
 
         class PAM final : public AsterixDataItemHandlerFixedLength {
@@ -270,6 +288,10 @@ class I048_130_Handler final : public AsterixDataItemHandlerBase {
                 PAM() : AsterixDataItemHandlerFixedLength(1) {
                     name = "Amplitude of Primary Plot";
                 }
+
+                [[nodiscard]] size_t decode(std::string_view data) override;
+
+                int8_t psrReplyAmplitude{0};
         };
 
         class RPD final : public AsterixDataItemHandlerFixedLength {
@@ -277,6 +299,10 @@ class I048_130_Handler final : public AsterixDataItemHandlerBase {
                 RPD() : AsterixDataItemHandlerFixedLength(1) {
                     name = "Difference in Range between PSR and SSR plot";
                 }
+
+                [[nodiscard]] size_t decode(std::string_view data) override;
+
+                int8_t rangeDifference{0};
         };
 
         class APD final : public AsterixDataItemHandlerFixedLength {
@@ -284,6 +310,10 @@ class I048_130_Handler final : public AsterixDataItemHandlerBase {
                 APD() : AsterixDataItemHandlerFixedLength(1) {
                     name = "Difference in Azimuth between PSR and SSR plot";
                 }
+
+                [[nodiscard]] size_t decode(std::string_view data) override;
+
+                int8_t azimuthDifference{0};
         };
 
         SRL srl;
@@ -293,14 +323,6 @@ class I048_130_Handler final : public AsterixDataItemHandlerBase {
         PAM pam;
         RPD rpd;
         APD apd;
-
-        I048_130_Handler()
-            : AsterixDataItemHandlerBase(), srl(), srr(), sam(), prl(), pam(), rpd(), apd()
-        {
-            name = "I048/130 Radar Plot Characteristics (Placeholder)";
-        }
-
-        [[nodiscard]] size_t decode(std::string_view data);
 };
 
 /**
@@ -590,6 +612,11 @@ class I048_120_Handler final : public AsterixDataItemHandlerCompound {
                 CAL() : AsterixDataItemHandlerFixedLength(2) {
                     name = "Calculated Doppler Speed";
                 }
+
+                [[nodiscard]] size_t decode(std::string_view data) override;
+
+                bool    isDoubtful{false};
+                int16_t speed{0};
         };
 
         struct DopplerEntry {

@@ -20,7 +20,6 @@
 
 // Library headers
 #include <ReactorAsterix/core/AsterixDiagnostics.h>
-#include <ReactorAsterix/core/EndianUtils.h>
 #include <ReactorAsterix/core/FastBitReader.h>
 #include <ReactorAsterix/cat048/Asterix048Report.h>
 
@@ -111,9 +110,9 @@ void I048_020_Handler::decodeExtension(uint32_t index, std::string_view data) {
         // decode XPP bit (X-Pulse - bits 6).
         xpp = (octet >> 5) & 0x01;
 
-        me = (octet >> 4) & 0x01;
+        me  = (octet >> 4) & 0x01;
 
-        mi = (octet >> 3) & 0x01; // Bit 4: Military Identification
+        mi  = (octet >> 3) & 0x01; // Bit 4: Military Identification
 
         // Bits 3-2: FOE/FRI (Mode 4 interrogation)
         foe_fri = static_cast<FOE_FRI_T>((octet >> 1) & 0x03);
@@ -122,45 +121,45 @@ void I048_020_Handler::decodeExtension(uint32_t index, std::string_view data) {
         // --- Third Octet (EP_VAL fields) ---
         // ADSB: Bit 8 (EP) and Bit 7 (Value)
         adsb.ep  = (octet >> 7) & 0x01;
-        adsb.val = static_cast<uint8_t>((octet >> 6) & 0x01);
+        adsb.val = (octet >> 6) & 0x01;
 
         // SCN: Bit 6 (EP) and Bit 5 (Value)
         scn.ep   = (octet >> 5) & 0x01;
-        scn.val  = static_cast<uint8_t>((octet >> 4) & 0x01);
+        scn.val  = (octet >> 4) & 0x01;
 
         // PAI: Bit 4 (EP) and Bit 3 (Value)
         pai.ep   = (octet >> 3) & 0x01;
-        pai.val  = static_cast<uint8_t>((octet >> 2) & 0x01);
+        pai.val  = (octet >> 2) & 0x01;
 
     } else if (index == 3) {
         // --- Fourth Octet (EP_VAL fields) ---
         // ACASXV: 1 bit for EP, 4 bits for VAL (Total 5 bits)
         acasxv.ep  = (octet >> 7) & 0x01;
-        acasxv.val = static_cast<uint8_t>((octet >> 3) & 0x0F);
+        acasxv.val = (octet >> 3) & 0x0F;
 
         // POXPR: 1 bit for EP, 1 bit for VAL (Total 2 bits)
-        poxpr.ep  = (octet >> 2) & 0x01;
-        poxpr.val = static_cast<uint8_t>((octet >> 1) & 0x01);
+        poxpr.ep   = (octet >> 2) & 0x01;
+        poxpr.val  = (octet >> 1) & 0x01;
 
     } else if (index == 4) {
         // --- Fifth Octet ---
         // Bits 8-7: POACT (EP + VAL)
-        poact.ep  = (octet >> 7) & 0x01;
-        poact.val = static_cast<uint8_t>((octet >> 6) & 0x01);
+        poact.ep   = (octet >> 7) & 0x01;
+        poact.val  = (octet >> 6) & 0x01;
 
         // Bits 6-5: DTFXPR (EP + VAL)
         dtfxpr.ep  = (octet >> 5) & 0x01;
-        dtfxpr.val = static_cast<uint8_t>((octet >> 4) & 0x01);
+        dtfxpr.val = (octet >> 4) & 0x01;
 
         // Bits 4-3: DTFACT (EP + VAL)
         dtfact.ep  = (octet >> 3) & 0x01;
-        dtfact.val = static_cast<uint8_t>((octet >> 2) & 0x01);
+        dtfact.val = (octet >> 2) & 0x01;
 
     } else if (index == 5) {
-        irmpr.ep  = (octet >> 7) & 0x01;
-        irmpr.val = static_cast<uint8_t>((octet >> 6) & 0x01);
-        irmact.ep  = (octet >> 7) & 0x01;
-        irmact.val = static_cast<uint8_t>((octet >> 6) & 0x01);
+        irmpr.ep   = (octet >> 7) & 0x01;
+        irmpr.val  = (octet >> 6) & 0x01;
+        irmact.ep  = (octet >> 5) & 0x01;
+        irmact.val = (octet >> 4) & 0x01;
     }
 }
 
@@ -254,100 +253,73 @@ size_t I048_090_Handler::decode(std::string_view data) {
     return AsterixDataItemHandlerFixedLength::decode(data);
 }
 
-size_t I048_130_Handler::decode(std::string_view data) {
-    size_t indicatorLen = calculateIndicatorLen(data);
-    if (indicatorLen == 0 || indicatorLen > data.size()) return 0;
+// Initialize the Compound base with the list of sub-item pointers
+I048_130_Handler::I048_130_Handler()
+    : AsterixDataItemHandlerCompound({&srl, &srr, &sam, &prl, &pam, &rpd, &apd}) {
+        name = "I048/130 Radar Plot Characteristics";
+}
 
-    std::string_view subFieldsData = data.substr(indicatorLen);
-    size_t totalSize = indicatorLen;
+/**
+ * @brief Decodes Subfield #1: SSR Plot Runlength
+ */
+size_t I048_130_Handler::SRL::decode(std::string_view data) {
+    if (data.size() < static_cast<size_t>(fixedSize)) return 0;
+    ssrRunlength = static_cast<uint8_t>(data[0]);
+    return AsterixDataItemHandlerFixedLength::decode(data);
+}
 
-    uint8_t indicator = static_cast<uint8_t>(data[0]);
+/**
+ * @brief Decodes Subfield #2: Number of Received Replies for (M)SSR
+ */
+size_t I048_130_Handler::SRR::decode(std::string_view data) {
+    if (data.size() < static_cast<size_t>(fixedSize)) return 0;
+    numSsrReplies = static_cast<uint8_t>(data[0]);
+    return AsterixDataItemHandlerFixedLength::decode(data);
+}
 
-    // Bit 8: SRL
-    if (indicator & 0x80) {
-        // Decode now returns the size. We use it to advance immediately.
-        size_t subSize = srl.decode(subFieldsData);
+/**
+ * @brief Decodes Subfield #3: Amplitude of (M)SSR Reply
+ */
+size_t I048_130_Handler::SAM::decode(std::string_view data) {
+    if (data.size() < static_cast<size_t>(fixedSize)) return 0;
+    ssrReplyAmplitude = static_cast<int8_t>(data[0]);
+    return AsterixDataItemHandlerFixedLength::decode(data);
+}
 
-        if (subSize == 0) return 0;
+/**
+ * @brief Decodes Subfield #4: Primary Plot Runlength
+ */
+size_t I048_130_Handler::PRL::decode(std::string_view data) {
+    if (data.size() < static_cast<size_t>(fixedSize)) return 0;
+    psrRunlength = static_cast<uint8_t>(data[0]);
+    return AsterixDataItemHandlerFixedLength::decode(data);
+}
 
-        subFieldsData = subFieldsData.substr(subSize);
-        totalSize += subSize;
-    }
+/**
+ * @brief Decodes Subfield #5: Amplitude of Primary Plot
+ */
+size_t I048_130_Handler::PAM::decode(std::string_view data) {
+    if (data.size() < static_cast<size_t>(fixedSize)) return 0;
+    psrReplyAmplitude = static_cast<int8_t>(data[0]);
+    return AsterixDataItemHandlerFixedLength::decode(data);
+}
 
-    // Bit 7: SRR
-    if (indicator & 0x40) {
-        // Decode now returns the size. We use it to advance immediately.
-        size_t subSize = srr.decode(subFieldsData);
+/**
+ * @brief Decodes Subfield #6: Difference in Range between PSR and SSR
+ */
+size_t I048_130_Handler::RPD::decode(std::string_view data) {
+    if (data.size() < static_cast<size_t>(fixedSize)) return 0;
+    rangeDifference = static_cast<int8_t>(data[0]);
+    return AsterixDataItemHandlerFixedLength::decode(data);
+}
 
-        if (subSize == 0) return 0;
-
-        subFieldsData = subFieldsData.substr(subSize);
-        totalSize += subSize;
-    }
-
-    // Bit 6: SAM
-    if (indicator & 0x20) {
-        // Decode now returns the size. We use it to advance immediately.
-        size_t subSize = sam.decode(subFieldsData);
-
-        if (subSize == 0) return 0;
-
-        subFieldsData = subFieldsData.substr(subSize);
-        totalSize += subSize;
-    }
-
-    // Bit 5: PRL
-    if (indicator & 0x10) {
-        // Decode now returns the size. We use it to advance immediately.
-        size_t subSize = prl.decode(subFieldsData);
-
-        if (subSize == 0) return 0;
-
-        subFieldsData = subFieldsData.substr(subSize);
-        totalSize += subSize;
-    }
-
-    // Bit 4: PAM
-    if (indicator & 0x08) {
-        // Decode now returns the size. We use it to advance immediately.
-        size_t subSize = pam.decode(subFieldsData);
-
-        if (subSize == 0) return 0;
-
-        subFieldsData = subFieldsData.substr(subSize);
-        totalSize += subSize;
-    }
-
-    // Bit 3: RPD
-    if (indicator & 0x04) {
-        // Decode now returns the size. We use it to advance immediately.
-        size_t subSize = rpd.decode(subFieldsData);
-
-        if (subSize == 0) return 0;
-
-        subFieldsData = subFieldsData.substr(subSize);
-        totalSize += subSize;
-    }
-
-    // Bit 2: APD
-    if (indicator & 0x02) {
-        // Decode now returns the size. We use it to advance immediately.
-        size_t subSize = apd.decode(subFieldsData);
-
-        if (subSize == 0) return 0;
-
-        subFieldsData = subFieldsData.substr(subSize);
-        totalSize += subSize;
-    }
-
-
-    for (size_t octetIdx = 1; octetIdx < indicatorLen; ++octetIdx) {
-        uint8_t ind = static_cast<uint8_t>(data[octetIdx]);
-        if (ind > 1) return 0;
-    }
-
-    AsterixDataItemHandlerBase::decode(data);
-    return totalSize;
+/**
+ * @brief Decodes Subfield #7: Difference in Azimuth between PSR and SSR
+ */
+size_t I048_130_Handler::APD::decode(std::string_view data) {
+    if (data.size() < static_cast<size_t>(fixedSize)) return 0;
+    azimuthDifference = static_cast<int8_t>(data[0]);
+    return AsterixDataItemHandlerFixedLength::decode(data);
 }
 
 /**
@@ -537,6 +509,72 @@ size_t I048_110_Handler::decode(std::string_view data) {
     }
 
     height = static_cast<int16_t>(flightLevelTemp);
+
+    return AsterixDataItemHandlerFixedLength::decode(data);
+}
+
+size_t I048_120_Handler::CAL::decode(std::string_view data) {
+    if (data.size() < fixedSize) return 0;
+
+    // Read the 16-bit block
+    uint16_t rawValue = readBigEndian<uint16_t>(data.data());
+
+    // Bit-16: Validity (D)
+    isDoubtful = (rawValue >> 15) & 0x01;
+
+    // Bits 10-1: 10-bit Two's Complement Speed
+    // Extract the lower 10 bits
+    uint16_t extracted = rawValue & 0x03FF;
+
+    // Manual Sign Extension for 10-bit to 16-bit
+    // If bit 10 (0x0200) is set, it's a negative number
+    if (extracted & 0x0200) {
+        speed = static_cast<int16_t>(extracted | 0xFC00); // Fill bits 11-16 with 1s
+    } else {
+        speed = static_cast<int16_t>(extracted);
+    }
+
+    return AsterixDataItemHandlerFixedLength::decode(data);
+}
+
+size_t I048_230_Handler::decode(std::string_view data) {
+    if (data.size() < fixedSize) return 0;
+
+    const uint8_t oct1 = static_cast<uint8_t>(data[0]);
+    const uint8_t oct2 = static_cast<uint8_t>(data[1]);
+
+    // Octet 1:
+    // Bits 8-6: COM (Shift 5, Mask 0x07)
+    // Bits 5-3: STAT (Shift 2, Mask 0x07)
+    // Bit 2: SI (Shift 1, Mask 0x01)
+    com  = static_cast<CommsCapability>((oct1 >> 5) & 0x07);
+    stat = static_cast<FlightStatus>((oct1 >> 2) & 0x07);
+    si   = (oct1 >> 1) & 0x01;
+
+    // Octet 2:
+    // Bit 8: MSSCC, Bit 7: ARC, Bit 6: AIC, Bit 5: B1A, Bits 4-1: B1B
+    msscc = (oct2 >> 7) & 0x01;
+    arc   = (oct2 >> 6) & 0x01;
+    aic   = (oct2 >> 5) & 0x01;
+    b1a   = (oct2 >> 4) & 0x01;
+    b1b   = oct2 & 0x0F;
+
+    return AsterixDataItemHandlerFixedLength::decode(data);
+}
+
+/**
+ * @brief Handler for I048/260, ACAS Resolution Advisory Report.
+ */
+size_t I048_260_Handler::decode(std::string_view data) {
+    if (data.size() < fixedSize) return 0;
+
+    const uint8_t* udata = reinterpret_cast<const uint8_t*>(data.data());
+
+    // Pack 7 bytes into a single 64-bit integer
+    acasMsg = 0;
+    for (size_t i = 0; i < 7; ++i) {
+        acasMsg = (acasMsg << 8) | udata[i];
+    }
 
     return AsterixDataItemHandlerFixedLength::decode(data);
 }

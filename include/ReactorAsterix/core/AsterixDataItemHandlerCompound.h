@@ -44,7 +44,7 @@ class AsterixDataItemHandlerCompound : public AsterixDataItemHandlerBase {
             : m_subItems(std::move(subItems)) {}
         ~AsterixDataItemHandlerCompound() override = default;
 
-        [[nodiscard]] size_t decode(std::string_view data) override {
+        [[nodiscard]] size_t decode(std::string_view data) override final {
             size_t indicatorLen = calculateIndicatorLen(data);
             if (indicatorLen == 0 || indicatorLen > data.size()) return 0;
 
