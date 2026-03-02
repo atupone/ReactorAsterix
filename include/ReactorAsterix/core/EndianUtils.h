@@ -25,10 +25,16 @@ namespace ReactorAsterix {
 
 template <typename T>
 T readBigEndian(const void* src) {
+    // Copy to a local variable of type T
     T val;
     std::memcpy(&val, src, sizeof(T));
-    if constexpr (sizeof(T) == 2) return ntohs(val);
-    if constexpr (sizeof(T) == 4) return ntohl(val);
+
+    if constexpr (sizeof(T) == 2) {
+        return static_cast<T>(ntohs(static_cast<uint16_t>(val)));
+    }
+    if constexpr (sizeof(T) == 4) {
+        return static_cast<T>(ntohl(static_cast<uint32_t>(val)));
+    }
     return val;
 }
 
