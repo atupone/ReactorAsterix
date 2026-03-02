@@ -391,27 +391,6 @@ size_t I048_240_Handler::decode(std::string_view data) {
 }
 
 /**
- * @brief Handler for I048/250, Mode S MB Data.
- * Repetitive item: 1 byte for Repetition Factor, then N * 8-byte messages.
- */
-size_t I048_250_Handler::decode(std::string_view data) {
-    if (data.empty()) return 0;
-
-    uint8_t repFactor = static_cast<uint8_t>(data[0]);
-    size_t totalRequired = static_cast<size_t>(1 + repFactor * 8);
-
-    if (data.size() < totalRequired) return 0;
-
-    mbData.clear();
-    for (uint8_t i = 0; i < repFactor; ++i) {
-        uint64_t msg = readBigEndian<uint64_t>(data.data() + 1 + (i * 8));
-        mbData.push_back(msg);
-    }
-
-    return totalRequired;
-}
-
-/**
  * @brief Handler for I048/161, Track Number
  */
 size_t I048_161_Handler::decode(std::string_view data) {

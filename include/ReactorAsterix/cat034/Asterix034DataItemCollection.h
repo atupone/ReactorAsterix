@@ -25,6 +25,9 @@
 // System headers
 #include <cstdlib>
 
+// Library headers
+#include <ReactorAsterix/core/EndianUtils.h>
+
 namespace ReactorAsterix {
 
 // The context object
@@ -207,12 +210,59 @@ class I034_060_Handler final : public AsterixDataItemHandlerFixedLength {
 };
 
 /**
+ * @brief Sub-structure for I034/070 Message Count Values
+ * Bits 16-12 (TYP): Type of message counter
+ * Bits 11-1 (COUNTER): 11-bit counter value
+ */
+struct MessageCount_Entry {
+    static constexpr size_t FixedLength = 2;
+
+    enum class MESSAGE_TYPE : uint8_t {
+        NO_DETECTION               = 0,
+        SINGLE_PSR                 = 1,
+        SINGLE_SSR_NON_S           = 2,
+        SSR_PSR_NON_S              = 3,
+        SINGLE_ALL_CALL_S          = 4,
+        SINGLE_ROLL_CALL_S         = 5,
+        ALL_CALL_PSR_S             = 6,
+        ROLL_CALL_PSR_S            = 7,
+        FILTER_WEATHER             = 8,
+        FILTER_JAMMING             = 9,
+        FILTER_PSR                 = 10,
+        FILTER_SSR_MODE_S          = 11,
+        FILTER_SSR_MODE_S_PSR      = 12,
+        FILTER_ENHANCED_SURV       = 13,
+        FILTER_PSR_ENHANCED        = 14,
+        FILTER_PSR_ENHANCED_SSR_S  = 15,
+        FILTER_PSR_ENHANCED_ALL    = 16,
+        RE_INTERROGATIONS          = 17,
+        BDS_SWAP                   = 18,
+        MODE_A_C_FRUIT             = 19,
+        MODE_S_FRUIT               = 20
+    };
+
+    MESSAGE_TYPE type{MESSAGE_TYPE::NO_DETECTION};
+    uint16_t     count{0};
+
+    void decode(std::string_view data) {
+        // Read 16-bit block (Octets 2-3 of the repetition)
+        uint16_t raw = readBigEndian<uint16_t>(data.data());
+
+        // Bits 16-12: 5-bit Type code
+        type = static_cast<MESSAGE_TYPE>((raw >> 11) & 0x1F);
+
+        // Bits 11-1: 11-bit Counter
+        count = raw & 0x07FF;
+    }
+};
+
+/**
  * @brief I034/070 Plot Count Values (Repetitive)
  */
-class I034_070_Handler final : public AsterixDataItemHandlerRepetitive {
+class I034_070_Handler final : public AsterixDataItemHandlerRepetitive<MessageCount_Entry> {
     public:
         static constexpr uint8_t FRN = 8;
-        I034_070_Handler() : AsterixDataItemHandlerRepetitive(2) {
+        I034_070_Handler() {
             name = "I034/070 Plot Count Values";
         }
 };

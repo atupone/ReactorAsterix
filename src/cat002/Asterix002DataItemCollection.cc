@@ -22,7 +22,6 @@
 #include <iostream>
 
 // Library headers
-#include <ReactorAsterix/core/EndianUtils.h>
 #include <ReactorAsterix/cat002/Asterix002Report.h>
 
 namespace ReactorAsterix {

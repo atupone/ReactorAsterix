@@ -336,19 +336,29 @@ class I048_240_Handler final : public AsterixDataItemHandlerFixedLength {
 };
 
 /**
+ * @brief Sub-structure for I048/250 Mode S MB Data
+ * Each repetition is an 8-byte (64-bit) BDS register.
+ */
+struct ModeS_MB_Entry {
+    static constexpr size_t FixedLength = 8;
+    uint64_t msg{0};
+
+    void decode(std::string_view data) {
+        // Reads 8 bytes as a single 64-bit word
+        msg = readBigEndian<uint64_t>(data.data());
+    }
+};
+
+/**
  * @brief Handler for I048/250, Mode S MB Data.
  * A repetitive, (8-byte) item for the Mode S MB Data
  */
-class I048_250_Handler final : public AsterixDataItemHandlerRepetitive {
+class I048_250_Handler final : public AsterixDataItemHandlerRepetitive<ModeS_MB_Entry> {
     public:
         static constexpr uint8_t FRN = 10;
-        I048_250_Handler() : AsterixDataItemHandlerRepetitive(8) {
+        I048_250_Handler() {
             name = "I048/250 Mode S MB Data";
         }
-
-        [[nodiscard]] size_t decode(std::string_view data) override;
-
-        std::vector<uint64_t> mbData;
 };
 
 /**
@@ -582,9 +592,23 @@ class I048_120_Handler final : public AsterixDataItemHandlerCompound {
                 }
         };
 
-        class RDS final : public AsterixDataItemHandlerRepetitive {
+        struct DopplerEntry {
+            static constexpr size_t FixedLength = 6;
+
+            int16_t  dopplerSpeed{0};
+            uint16_t ambiguityRange{0};
+            uint16_t frequency{0};
+
+            void decode(std::string_view data) {
+                dopplerSpeed   = readBigEndian<int16_t>(data.data());
+                ambiguityRange = readBigEndian<uint16_t>(data.data() + 2);
+                frequency      = readBigEndian<uint16_t>(data.data() + 4);
+            }
+        };
+
+        class RDS final : public AsterixDataItemHandlerRepetitive<DopplerEntry> {
             public:
-                RDS() : AsterixDataItemHandlerRepetitive(6) {
+                RDS() {
                     name = "Raw Doppler Speed";
                 }
         };

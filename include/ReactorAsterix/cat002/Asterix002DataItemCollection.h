@@ -25,6 +25,9 @@
 // System headers
 #include <cstdlib>
 
+// Library headers
+#include <ReactorAsterix/core/EndianUtils.h>
+
 namespace ReactorAsterix {
 
 // The context object
@@ -170,12 +173,48 @@ class I002_060_Handler final : public AsterixDataItemHandlerExtendedLength {
 };
 
 /**
+ * @brief Sub-structure for I002/070 Plot Count Values
+ * Octet 1-2 (16 bits):
+ * Bit-16 (A): Aerial identification (0=Antenna 1, 1=Antenna 2)
+ * Bits 15-11 (IDENT): Plot category (1=Primary, 2=SSR, 3=Combined)
+ * Bits 10-1 (COUNTER): 10-bit counter value
+ */
+struct PlotCount_Entry {
+    static constexpr size_t FixedLength = 2;
+
+    enum class PLOT_CATEGORY : uint8_t {
+        SOLE_PRIMARY = 1,
+        SOLE_SSR     = 2,
+        COMBINED     = 3
+    };
+
+    bool antennaId{false};
+    PLOT_CATEGORY plotCategory{PLOT_CATEGORY::SOLE_PRIMARY};
+    uint16_t      count{0};
+
+    void decode(std::string_view data) {
+        // Read the 16-bit block
+        uint16_t raw = readBigEndian<uint16_t>(data.data());
+
+        // Bit 16 (MSB): Aerial identification
+        antennaId = (raw >> 15) & 0x01;
+
+        // Bits 15-11: 5-bit plot category identification code
+        // We cast the masked result directly to the Enum
+        plotCategory = static_cast<PLOT_CATEGORY>((raw >> 10) & 0x1F);
+
+        // Bits 10-1: 10-bit counter value
+        count = raw & 0x03FF;
+    }
+};
+
+/**
  * @brief I002/070 Plot Count Values
  */
-class I002_070_Handler final : public AsterixDataItemHandlerRepetitive {
+class I002_070_Handler final : public AsterixDataItemHandlerRepetitive<PlotCount_Entry> {
     public:
         static constexpr uint8_t FRN = 8;
-        I002_070_Handler() : AsterixDataItemHandlerRepetitive(2) {
+        I002_070_Handler() {
             name = "I002/070 Plot Count Values";
         }
 };
