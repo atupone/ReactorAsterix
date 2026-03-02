@@ -64,73 +64,42 @@ size_t I001_010_Handler::decode(std::string_view data) {
  *
  * @param data The raw data buffer for this item.
  */
-size_t I001_020_Handler::decode(std::string_view data) {
-    if (data.empty()) return 0;
+void I001_020_Handler::decodePrimary(std::string_view data) {
+    const uint8_t octet = static_cast<uint8_t>(data[0]);
 
-    const uint8_t* raw = reinterpret_cast<const uint8_t*>(data.data());
-    FastBitReader reader(raw);
-    int bit = 7; // Start at MSB
-
-    typ = reader.readBit(bit);
+    typ = (octet >> 7) & 0x01;
 
     // Decode the SIM bit (Simulation - bits 6).
-    sim = reader.readBit(bit);
+    sim = (octet >> 6) & 0x01;
 
     // Decode the 2 bits of the SSR/PSR (Target Report Type - bits 5-4).
-    const uint8_t ssr_psr = reader.readBits<2>(bit);
-    ssrpsr = static_cast<SSRPSR_T>(ssr_psr);
+    ssrpsr = static_cast<SSRPSR_T>((octet >> 4) & 0x03);
 
-    ant = reader.readBit(bit);
+    ant = (octet >> 3) & 0x01;
 
     // Decode the SPI bit (Special Position Identification - bit 2).
-    spi = reader.readBit(bit);
+    spi = (octet >> 2) & 0x01;
 
     // Decode the RAB bit (Report from Aircraft Transponder - bit 2).
-    rab = reader.readBit(bit);
+    rab = (octet >> 1) & 0x01;
+}
 
-    // Check the FX bit (bit 0) to see if the second octet exists.
-    bool fx = reader.readBit(bit);
-
-    size_t consumed = 1;
-
-    if (fx) {
-        // Safe Check: Can we read the 2nd byte?
-        if (consumed >= data.size()) return 0;
+void I001_020_Handler::decodeExtension(uint32_t index, std::string_view data) {
+    if (index == 1) { // First extension
+        const uint8_t octet = static_cast<uint8_t>(data[0]);
 
         // Decode TST bit (Test, bit 8 2nd byte)
-        tst = reader.readBit(bit);
+        tst = (octet >> 7) & 0x01;
 
         // Decode the 2 bits of the EMG (Emergency) subfield (bits 5-4).
-        ds1ds2 = static_cast<DS1DS2_T>(reader.readBits<2>(bit));
+        ds1ds2 = static_cast<DS1DS2_T>((octet >> 5) & 0x03);
 
-        me = reader.readBit(bit);
-        mi = reader.readBit(bit);
+        // Bit 5: ME (Military Emergency)
+        me = (octet >> 4) & 0x01;
 
-        reader.skipBits(bit, 2);
-
-        // Check the FX bit (bit 0) of the second octet for the third octet.
-        fx = reader.readBit(bit);
-
-        consumed++; // Now we've finished 2 bytes
-
-        // Extended Chain
-        while (fx) {
-            // Before we move to the next byte, we check if it exists.
-            // 'consumed' currently holds the count of bytes ALREADY read.
-            // If 'consumed' equals 'data.size()', there is no next byte.
-            if (consumed >= data.size()) return 0;
-
-            // We only care about the FX bit in subsequent octets
-            reader.skipBits(bit, 7);
-            fx = reader.readBit(bit);
-
-            // We successfully finished another byte
-            consumed++;
-        }
+        // Bit 4: MI (Military Identification)
+        mi = (octet >> 3) & 0x01;
     }
-
-    AsterixDataItemHandlerBase::decode(data);
-    return consumed;
 }
 
 // ----------------------------------------------------------------------------------

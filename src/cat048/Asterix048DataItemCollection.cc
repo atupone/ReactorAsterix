@@ -80,150 +80,88 @@ size_t I048_140_Handler::decode(std::string_view data) {
  *
  * @param data The raw data buffer for this item.
  */
-size_t I048_020_Handler::decode(std::string_view data) {
-    if (data.empty()) return 0;
-
-    const uint8_t* raw = reinterpret_cast<const uint8_t*>(data.data());
-    FastBitReader reader(raw);
-    int bit = 7; // Start at MSB
+void I048_020_Handler::decodePrimary(std::string_view data) {
+    const uint8_t octet = static_cast<uint8_t>(data[0]);
 
     // Decode the 3 bits of the TYP (bits 8, 7 and 6).
-    typ = static_cast<TYP_T>(reader.readBits<3>(bit));
+    typ = static_cast<TYP_T>((octet >> 5) & 0x07);
 
     // Decode the SIM bit (Simulation - bits 5).
-    sim = reader.readBit(bit);
+    sim = (octet >> 4) & 0x01;
 
     // Decode the RDP bit (Radar Display Processor Chain - bits 4).
-    rdp = reader.readBit(bit);
+    rdp = (octet >> 3) & 0x01;
 
     // Decode the SPI bit (Special Position Identification - bit 3).
-    spi = reader.readBit(bit);
+    spi = (octet >> 2) & 0x01;
 
     // Decode the RAB bit (Report from Aircraft Transponder - bit 2).
-    rab = reader.readBit(bit);
+    rab = (octet >> 1) & 0x01;
+}
 
-    // Check the FX bit (bit 0) to see if the second octet exists.
-    bool fx = reader.readBit(bit);
-
-    size_t consumed = 1;
-
-    if (fx) {
-        // Safe Check: Can we read the 2nd byte?
-        if (consumed >= data.size()) return 0;
-
+void I048_020_Handler::decodeExtension(uint32_t index, std::string_view data) {
+    const uint8_t octet = static_cast<uint8_t>(data[0]);
+    if (index == 1) {
         // Decode TST bit (Test, bit 8 2nd byte)
-        tst = reader.readBit(bit);
+        tst = (octet >> 7) & 0x01;
 
         // decode ERR bit (Extended Range, bits 7).
-        err = reader.readBit(bit);
+        err = (octet >> 6) & 0x01;
 
         // decode XPP bit (X-Pulse - bits 6).
-        xpp = reader.readBit(bit);
+        xpp = (octet >> 5) & 0x01;
 
-        me = reader.readBit(bit); // Bit 5: Military Emergency
+        me = (octet >> 4) & 0x01;
 
-        mi = reader.readBit(bit); // Bit 4: Military Identification
+        mi = (octet >> 3) & 0x01; // Bit 4: Military Identification
 
         // Bits 3-2: FOE/FRI (Mode 4 interrogation)
-        foe_fri = static_cast<FOE_FRI_T>(reader.readBits<2>(bit));
+        foe_fri = static_cast<FOE_FRI_T>((octet >> 1) & 0x03);
 
-        // Check the FX bit (bit 0) of the second octet for the third octet.
-        fx = reader.readBit(bit);
+    } else if (index == 2) {
+        // --- Third Octet (EP_VAL fields) ---
+        // ADSB: Bit 8 (EP) and Bit 7 (Value)
+        adsb.ep  = (octet >> 7) & 0x01;
+        adsb.val = static_cast<uint8_t>((octet >> 6) & 0x01);
 
-        consumed++; // Now we've finished 2 bytes
+        // SCN: Bit 6 (EP) and Bit 5 (Value)
+        scn.ep   = (octet >> 5) & 0x01;
+        scn.val  = static_cast<uint8_t>((octet >> 4) & 0x01);
 
-        if (fx) {
-            if (consumed >= data.size()) return 0;
+        // PAI: Bit 4 (EP) and Bit 3 (Value)
+        pai.ep   = (octet >> 3) & 0x01;
+        pai.val  = static_cast<uint8_t>((octet >> 2) & 0x01);
 
-            // --- Third Octet (EP_VAL fields) ---
-            // ADSB: Bit 8 (EP) and Bit 7 (Value)
-            adsb.ep  = reader.readBit(bit);
-            adsb.val = static_cast<uint8_t>(reader.readBit(bit));
+    } else if (index == 3) {
+        // --- Fourth Octet (EP_VAL fields) ---
+        // ACASXV: 1 bit for EP, 4 bits for VAL (Total 5 bits)
+        acasxv.ep  = (octet >> 7) & 0x01;
+        acasxv.val = static_cast<uint8_t>((octet >> 3) & 0x0F);
 
-            // SCN: Bit 6 (EP) and Bit 5 (Value)
-            scn.ep   = reader.readBit(bit);
-            scn.val  = static_cast<uint8_t>(reader.readBit(bit));
+        // POXPR: 1 bit for EP, 1 bit for VAL (Total 2 bits)
+        poxpr.ep  = (octet >> 2) & 0x01;
+        poxpr.val = static_cast<uint8_t>((octet >> 1) & 0x01);
 
-            // PAI: Bit 4 (EP) and Bit 3 (Value)
-            pai.ep   = reader.readBit(bit);
-            pai.val  = static_cast<uint8_t>(reader.readBit(bit));
+    } else if (index == 4) {
+        // --- Fifth Octet ---
+        // Bits 8-7: POACT (EP + VAL)
+        poact.ep  = (octet >> 7) & 0x01;
+        poact.val = static_cast<uint8_t>((octet >> 6) & 0x01);
 
-            reader.skipBits(bit, 1); // Bit 2 (Spare)
+        // Bits 6-5: DTFXPR (EP + VAL)
+        dtfxpr.ep  = (octet >> 5) & 0x01;
+        dtfxpr.val = static_cast<uint8_t>((octet >> 4) & 0x01);
 
-            fx = reader.readBit(bit); // Bit 1: Extension
-            consumed++;
+        // Bits 4-3: DTFACT (EP + VAL)
+        dtfact.ep  = (octet >> 3) & 0x01;
+        dtfact.val = static_cast<uint8_t>((octet >> 2) & 0x01);
 
-            if (fx) {
-                if (consumed >= data.size()) return 0;
-
-                // --- Fourth Octet (EP_VAL fields) ---
-                // ACASXV: 1 bit for EP, 4 bits for VAL (Total 5 bits)
-                acasxv.ep  = reader.readBit(bit);
-                acasxv.val = static_cast<uint8_t>(reader.readBits<4>(bit));
-
-                // POXPR: 1 bit for EP, 1 bit for VAL (Total 2 bits)
-                poxpr.ep  = static_cast<uint8_t>(reader.readBit(bit));
-                poxpr.val = static_cast<uint8_t>(reader.readBit(bit));
-
-                fx = reader.readBit(bit);
-                consumed++;
-
-                if (fx) {
-                    if (consumed >= data.size()) return 0;
-
-                    // --- Fifth Octet ---
-                    // Bits 8-7: POACT (EP + VAL)
-                    poact.ep  = reader.readBit(bit);         // Bit 8
-                    poact.val = static_cast<uint8_t>(reader.readBit(bit));  // Bit 7
-
-                    // Bits 6-5: DTFXPR (EP + VAL)
-                    dtfxpr.ep  = reader.readBit(bit);        // Bit 6
-                    dtfxpr.val = static_cast<uint8_t>(reader.readBit(bit)); // Bit 5
-
-                    // Bits 4-3: DTFACT (EP + VAL)
-                    dtfact.ep  = reader.readBit(bit);        // Bit 4
-                    dtfact.val = static_cast<uint8_t>(reader.readBit(bit)); // Bit 3
-
-                    // Bit 2: Spare (set to 0)
-                    reader.skipBits(bit, 1);                 // Bit 2
-
-                    // Bit 1: FX Extension bit
-                    fx = reader.readBit(bit);                 // Bit 1
-                    consumed++;
-
-                    if (fx) {
-                        if (consumed >= data.size()) return 0;
-                        irmpr.ep   = reader.readBit(bit);    // Bit 8
-                        irmpr.val  = static_cast<uint8_t>(reader.readBit(bit)); // Bit 7
-                        irmact.ep  = reader.readBit(bit);    // Bit 6
-                        irmact.val = static_cast<uint8_t>(reader.readBit(bit)); // Bit 5
-
-                        reader.skipBits(bit, 3);             // Spares
-                        fx = reader.readBit(bit);            // Bit 1
-                        consumed++;
-
-                        // Extended Chain
-                        while (fx) {
-                            // Before we move to the next byte, we check if it exists.
-                            // 'consumed' currently holds the count of bytes ALREADY read.
-                            // If 'consumed' equals 'data.size()', there is no next byte.
-                            if (consumed >= data.size()) return 0;
-
-                            // We only care about the FX bit in subsequent octets
-                            reader.skipBits(bit, 7);
-                            fx = reader.readBit(bit);
-
-                            // We successfully finished another byte
-                            consumed++;
-                        }
-                    }
-                }
-            }
-        }
+    } else if (index == 5) {
+        irmpr.ep  = (octet >> 7) & 0x01;
+        irmpr.val = static_cast<uint8_t>((octet >> 6) & 0x01);
+        irmact.ep  = (octet >> 7) & 0x01;
+        irmact.val = static_cast<uint8_t>((octet >> 6) & 0x01);
     }
-
-    AsterixDataItemHandlerBase::decode(data);
-    return consumed;
 }
 
 // ----------------------------------------------------------------------------------
@@ -428,25 +366,20 @@ size_t I048_042_Handler::decode(std::string_view data) {
     return AsterixDataItemHandlerFixedLength::decode(data);
 }
 
-size_t I048_030_Handler::decode(std::string_view data) {
-    const uint8_t* raw = reinterpret_cast<const uint8_t*>(data.data());
-    FastBitReader reader(raw);
-    int bit = 7;
-    size_t consumed = 0;
-    bool fx = true;
 
-     while (fx && consumed < data.size()) {
-         // Read 7 bits for the code
-         uint8_t val = static_cast<uint8_t>(reader.readBits<7>(bit));
-         codes.push_back(static_cast<WarningCode>(val));
 
-         // Read the FX bit (Bit 1)
-         fx = reader.readBit(bit);
-         consumed++;
-     }
+void I048_030_Handler::decodePrimary(std::string_view data) {
+    // ASTERIX bit 8-2 is the error code.
+    // In C++ (0-7 indexing), this is index 7 down to 1.
+    // Shift by 1 to move bit 2 to the 0th position and mask 7 bits (0x7F).
+    uint8_t code = (static_cast<uint8_t>(data[0]) >> 1) & 0x7F;
+    warningCodes.push_back(static_cast<WarningCode>(code));
+}
 
-     AsterixDataItemHandlerBase::decode(data);
-     return consumed;
+void I048_030_Handler::decodeExtension(uint32_t /*index*/, std::string_view data) {
+    // Every extension byte in I048/030 is just another 7-bit error code.
+    uint8_t code = (static_cast<uint8_t>(data[0]) >> 1) & 0x7F;
+    warningCodes.push_back(static_cast<WarningCode>(code));
 }
 
 /**

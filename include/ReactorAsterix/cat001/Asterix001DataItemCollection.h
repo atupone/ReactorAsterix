@@ -77,7 +77,8 @@ class I001_020_Handler final : public AsterixDataItemHandlerExtendedLength {
          * @brief Decodes the Target Report Descriptor (TRT, SPI, EMG, etc.).
          * @param data The raw data buffer.
          */
-        [[nodiscard]] size_t  decode(std::string_view data) override;
+        void decodePrimary(std::string_view data) override;
+        void decodeExtension(uint32_t index, std::string_view data) override;
 
         inline void reset() {
             AsterixDataItemHandlerExtendedLength::reset();

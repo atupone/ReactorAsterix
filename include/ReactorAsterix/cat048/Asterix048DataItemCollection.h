@@ -100,7 +100,8 @@ class I048_020_Handler final : public AsterixDataItemHandlerExtendedLength {
          * @brief Decodes the Target Report Descriptor (TRT, SPI, EMG, etc.).
          * @param data The raw data buffer.
          */
-        [[nodiscard]] size_t decode(std::string_view data) override;
+        void decodePrimary(std::string_view data) override;
+        void decodeExtension(uint32_t index, std::string_view data) override;
 
         inline void reset() {
             AsterixDataItemHandlerExtendedLength::reset();
@@ -450,11 +451,13 @@ class I048_030_Handler final : public AsterixDataItemHandlerExtendedLength {
             DUPLICATE_MODE_5_PIN                 = 37
         };
 
-        std::vector<WarningCode> codes;
+        std::vector<WarningCode> warningCodes;
 
-        size_t decode(std::string_view data) override;
+        void decodePrimary(std::string_view data) override;
+        void decodeExtension(uint32_t index, std::string_view data) override;
+
         inline void reset() {
-            codes.clear();
+            warningCodes.clear();
         }
 };
 

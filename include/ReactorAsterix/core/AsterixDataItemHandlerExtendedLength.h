@@ -42,27 +42,50 @@ class AsterixDataItemHandlerExtendedLength : public AsterixDataItemHandlerBase {
         ~AsterixDataItemHandlerExtendedLength() override = default;
 
         /**
+         * @brief Hook for the mandatory first part of length k.
+         * Default: does nothing, allowing for size-only decoding.
+         */
+        virtual void decodePrimary(std::string_view /*data*/) {}
+
+        /**
+         * @brief Hook for each subsequent extension of length i.
+         * Default: does nothing.
+         */
+        virtual void decodeExtension(uint32_t /*index*/, std::string_view /*data*/) {}
+
+        /**
          * @brief Calculates the total size by scanning for the FX bit (LSB).
          * Matches the signature in IAsterixDataItemHandler.h.
          */
-        [[nodiscard]] size_t decode(std::string_view data) {
+        [[nodiscard]] size_t decode(std::string_view data) override final {
             AsterixDataItemHandlerBase::decode(data);
+
+            // Boundary check for the Primary Part
+            if (data.size() < k) return 0;
+
+            // Call hook for Primary Part
+            decodePrimary(data.substr(0, k));
 
             // k is the initial length (e.g., 1 byte)
             size_t currentPos = k - 1;
+            uint32_t extCount = 0;
 
-            // The item has variable length. The loop continues as long as the FX bit (LSB) is set.
+            // Iterate through extensions as long as FX bit is 1
             while (currentPos < data.size()) {
-                const uint8_t byte = static_cast<uint8_t>(data[currentPos]);
-                if (!(byte & 0x01)) break; // FX bit not set, we are at the end
+                const uint8_t lastByteOfBlock = static_cast<uint8_t>(data[currentPos]);
+
+                if (!(lastByteOfBlock & 0x01)) break; // FX bit not set, we are at the end
+
+                // Check if buffer has room for the next 'i' bytes
+                if (data.size() < currentPos + 1 + i) return 0;
+
+                extCount++;
+                decodeExtension(extCount, data.substr(currentPos + 1, i));
+
                 currentPos += i;
             }
 
-            size_t totalSize = currentPos + 1;
-
-            // Safety check: if the loop finished because we ran out of data
-            // rather than finding a 0 FX bit, the packet is malformed.
-            return (totalSize <= data.size()) ? totalSize : 0;
+            return currentPos + 1;
         }
 
     protected:
