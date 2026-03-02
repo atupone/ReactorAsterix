@@ -427,6 +427,19 @@ void I048_170_Handler::decodeExtension(uint32_t index, std::string_view data) {
     }
 }
 
+size_t I048_210_Handler::decode(std::string_view data) {
+    if (data.size() < fixedSize) return 0;
+
+    const uint8_t* octets = reinterpret_cast<const uint8_t*>(data.data());
+
+    sigmaX = octets[0];
+    sigmaY = octets[1];
+    sigmaV = octets[2];
+    sigmaH = octets[3];
+
+    return AsterixDataItemHandlerFixedLength::decode(data);
+}
+
 void I048_030_Handler::decodePrimary(std::string_view data) {
     // ASTERIX bit 8-2 is the error code.
     // In C++ (0-7 indexing), this is index 7 down to 1.

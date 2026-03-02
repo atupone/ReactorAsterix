@@ -27,6 +27,9 @@
 #include <cstdlib>
 #include <string>
 
+// Library headers
+#include <ReactorAsterix/core/EndianUtils.h>
+
 namespace ReactorAsterix {
 
 // The context object
@@ -481,6 +484,13 @@ class I048_210_Handler final : public AsterixDataItemHandlerFixedLength {
         I048_210_Handler() : AsterixDataItemHandlerFixedLength(4) {
             name = "I048/210 Track Quality";
         }
+
+        [[nodiscard]] size_t decode(std::string_view data) override;
+
+        uint8_t sigmaX{0};  // Standard Deviation of X
+        uint8_t sigmaY{0};  // Standard Deviation of Y
+        uint8_t sigmaV{0};  // Standard Deviation of Velocity
+        uint8_t sigmaH{0};  // Standard Deviation of Heading
 };
 
 /**
@@ -667,6 +677,35 @@ class I048_230_Handler final : public AsterixDataItemHandlerFixedLength {
         I048_230_Handler() : AsterixDataItemHandlerFixedLength(2) {
             name = "I048/230 Communication/ACAS Capability and Flight Status";
         }
+
+        [[nodiscard]] size_t decode(std::string_view data) override;
+
+        enum class CommsCapability : uint8_t {
+            NoCapability = 0,
+            CommA_CommB = 1,
+            CommA_CommB_UplinkELM = 2,
+            CommA_CommB_ELM_Both = 3,
+            Level5 = 4
+        };
+
+        enum class FlightStatus : uint8_t {
+            NoAlert_NoSPI_Airborne = 0,
+            NoAlert_NoSPI_OnGround = 1,
+            Alert_NoSPI_Airborne = 2,
+            Alert_NoSPI_OnGround = 3,
+            Alert_SPI_Airborne_OnGround = 4,
+            NoAlert_SPI_Airborne_OnGround = 5
+        };
+
+        // Raw bitfield values as defined in ASTERIX Cat 048
+        CommsCapability com{CommsCapability::NoCapability};
+        FlightStatus    stat{FlightStatus::NoAlert_NoSPI_Airborne};
+        bool            si{false};      // SI/II Transponder Capability
+        bool            msscc{false};  // Mode S Specific Combined Capability
+        bool            arc{false};    // Altitude Reporting Capability
+        bool            aic{false};    // Aircraft Identification Capability
+        uint8_t         b1a{0};        // BDS 1,0 bit 16
+        uint8_t         b1b{0};        // BDS 1,0 bits 37/40 (4 bits)
 };
 
 /**
@@ -679,6 +718,11 @@ class I048_260_Handler final : public AsterixDataItemHandlerFixedLength {
         I048_260_Handler() : AsterixDataItemHandlerFixedLength(7) {
             name = "I048/260 ACAS Resolution Advisory Report";
         }
+
+        [[nodiscard]] size_t decode(std::string_view data) override;
+
+        // 56-bit ACAS message (MB field)
+        uint64_t acasMsg{0};
 };
 
 /**
