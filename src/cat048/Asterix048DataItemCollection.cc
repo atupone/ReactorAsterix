@@ -351,6 +351,79 @@ size_t I048_130_Handler::decode(std::string_view data) {
 }
 
 /**
+ * @brief Handler for I048/220, Aircraft Address.
+ * 24-bit Mode S address, typically represented as a hex value.
+ */
+size_t I048_220_Handler::decode(std::string_view data) {
+    if (data.size() < fixedSize) return 0;
+
+    auto* udata = reinterpret_cast<const uint8_t*>(data.data());
+    // Combine 3 bytes into a single integer
+    address = (static_cast<uint32_t>(udata[0]) << 16) |
+        (static_cast<uint32_t>(udata[1]) << 8)  |
+        (static_cast<uint32_t>(udata[2]));
+
+    return AsterixDataItemHandlerFixedLength::decode(data);
+}
+
+/**
+ * @brief Handler for I048/240, Aircraft Identification.
+ * 8 characters (6 bits each) encoded in 6 bytes.
+ */
+size_t I048_240_Handler::decode(std::string_view data) {
+    if (data.size() < fixedSize) return 0;
+
+    const uint8_t* raw = reinterpret_cast<const uint8_t*>(data.data());
+    FastBitReader reader(raw);
+    int bit = 7;
+
+    identification.clear();
+    for (int i = 0; i < 8; ++i) {
+        uint8_t val = static_cast<uint8_t>(reader.readBits<6>(bit));
+        // Map 6-bit value to IA-5/ASCII according to Eurocontrol Spec
+        if (val >= 1 && val <= 26) identification += static_cast<char>('A' + val - 1);
+        else if (val >= 48 && val <= 57) identification += static_cast<char>('0' + val - 48);
+        else if (val == 32) identification += ' ';
+        else identification += '?'; // Unknown/Spare
+    }
+
+    return AsterixDataItemHandlerFixedLength::decode(data);
+}
+
+/**
+ * @brief Handler for I048/250, Mode S MB Data.
+ * Repetitive item: 1 byte for Repetition Factor, then N * 8-byte messages.
+ */
+size_t I048_250_Handler::decode(std::string_view data) {
+    if (data.empty()) return 0;
+
+    uint8_t repFactor = static_cast<uint8_t>(data[0]);
+    size_t totalRequired = static_cast<size_t>(1 + repFactor * 8);
+
+    if (data.size() < totalRequired) return 0;
+
+    mbData.clear();
+    for (uint8_t i = 0; i < repFactor; ++i) {
+        uint64_t msg = readBigEndian<uint64_t>(data.data() + 1 + (i * 8));
+        mbData.push_back(msg);
+    }
+
+    return totalRequired;
+}
+
+/**
+ * @brief Handler for I048/161, Track Number
+ */
+size_t I048_161_Handler::decode(std::string_view data) {
+    if (data.size() < fixedSize) return 0;
+
+    // 12 bits are used for the track number, 4 bits are spare (top bits)
+    trackNumber = readBigEndian<uint16_t>(data.data()) & 0x0FFF;
+
+    return AsterixDataItemHandlerFixedLength::decode(data);
+}
+
+/**
  * @brief Handler for ASTERIX Data Item I048/042, Calculated Position in Cartesian Co-ordinates.
  * * This item provides the calculated position in 1/128 NM increments.
  * The values are 16-bit signed integers.
@@ -366,7 +439,42 @@ size_t I048_042_Handler::decode(std::string_view data) {
     return AsterixDataItemHandlerFixedLength::decode(data);
 }
 
+/**
+ * @brief Handler for I048/200, Calculated Track Velocity in Polar Co-ordinates.
+ */
+size_t I048_200_Handler::decode(std::string_view data) {
+    if (data.size() < fixedSize) return 0;
 
+    groundSpeed = readBigEndian<uint16_t>(data.data());
+    trackAngle  = readBigEndian<uint16_t>(data.data() + 2);
+
+    return AsterixDataItemHandlerFixedLength::decode(data);
+}
+
+/**
+ * @brief Handler for I048/170, Track Status.
+ * Extended length item.
+ */
+void I048_170_Handler::decodePrimary(std::string_view data) {
+    const uint8_t octet = static_cast<uint8_t>(data[0]);
+
+    cnf = (octet >> 7) & 0x01;
+    rad = static_cast<RAD_T>((octet >> 5) & 0x03);
+    dou = (octet >> 4) & 0x01;
+    mah = (octet >> 3) & 0x01;
+    cdm = static_cast<CDM_T>((octet >> 1) & 0x03);
+}
+
+void I048_170_Handler::decodeExtension(uint32_t index, std::string_view data) {
+    if (index == 1) { // Process only the first extension
+        const uint8_t octet = static_cast<uint8_t>(data[0]);
+
+        tre = (octet >> 7) & 0x01;
+        gho = (octet >> 6) & 0x01;
+        sup = (octet >> 5) & 0x01;
+        tcc = (octet >> 4) & 0x01;
+    }
+}
 
 void I048_030_Handler::decodePrimary(std::string_view data) {
     // ASTERIX bit 8-2 is the error code.

@@ -25,6 +25,7 @@
 
 // System headers
 #include <cstdlib>
+#include <string>
 
 namespace ReactorAsterix {
 
@@ -312,6 +313,10 @@ class I048_220_Handler final : public AsterixDataItemHandlerFixedLength {
         I048_220_Handler() : AsterixDataItemHandlerFixedLength(3) {
             name = "I048/220 Aircraft Address";
         }
+
+        [[nodiscard]] size_t decode(std::string_view data) override;
+
+        uint32_t address; // 24-bit address
 };
 
 /**
@@ -324,6 +329,10 @@ class I048_240_Handler final : public AsterixDataItemHandlerFixedLength {
         I048_240_Handler() : AsterixDataItemHandlerFixedLength(6) {
             name = "I048/240 Aircraft Identification";
         }
+
+        [[nodiscard]] size_t decode(std::string_view data) override;
+
+        std::string identification;
 };
 
 /**
@@ -336,6 +345,10 @@ class I048_250_Handler final : public AsterixDataItemHandlerRepetitive {
         I048_250_Handler() : AsterixDataItemHandlerRepetitive(8) {
             name = "I048/250 Mode S MB Data";
         }
+
+        [[nodiscard]] size_t decode(std::string_view data) override;
+
+        std::vector<uint64_t> mbData;
 };
 
 /**
@@ -347,6 +360,10 @@ class I048_161_Handler final : public AsterixDataItemHandlerFixedLength {
         I048_161_Handler(): AsterixDataItemHandlerFixedLength(2) {
             name = "I048/161, Track Number";
         }
+
+        [[nodiscard]] size_t decode(std::string_view data) override;
+
+        uint16_t trackNumber{0};
 };
 
 /**
@@ -374,6 +391,11 @@ class I048_200_Handler final : public AsterixDataItemHandlerFixedLength {
         I048_200_Handler(): AsterixDataItemHandlerFixedLength(4) {
             name = "I048/200, Calculated Track Velocity in Polar Co-ordinates";
         }
+
+        [[nodiscard]] size_t decode(std::string_view data) override;
+
+        uint16_t groundSpeed{0};
+        uint16_t trackAngle{0};
 };
 
 /**
@@ -385,6 +407,36 @@ class I048_170_Handler final : public AsterixDataItemHandlerExtendedLength {
         I048_170_Handler() : AsterixDataItemHandlerExtendedLength(1, 1) {
             name = "I048/170, Track Status";
         }
+
+        void decodePrimary(std::string_view data) override;
+        void decodeExtension(uint32_t index, std::string_view data) override;
+
+        // Enumeration for RAD
+        enum class RAD_T : uint8_t {
+            COMBINED_TRACK   = 0,
+            PSR_TRACK        = 1,
+            SSR_MODE_S_TRACK = 2,
+            INVALID          = 3
+        };
+
+        // Enumeration for CDM
+        enum class CDM_T : uint8_t {
+            MAINTAINING = 0,
+            CLIMBING    = 1,
+            DESCENDING  = 2,
+            UNKNOWN     = 3
+        };
+
+        // Status Bits
+        bool cnf{false};                  // Confirmed vs Tentative Track
+        RAD_T rad{RAD_T::COMBINED_TRACK}; // Type of Sensor(s) maintaining Track
+        bool dou{false};                  // Signals level of confidence in plot to track association process
+        bool mah{false};                  // Manoeuvre detection in Horizontal Sense
+        CDM_T cdm{CDM_T::MAINTAINING};    // Climbing / Descending Mode
+        bool tre{false};                  // Signal for End_Of_Track
+        bool gho{false};                  // Ghost vs. true target
+        bool sup{false};                  // Track maintained with track information from network
+        bool tcc{false};                  // Type of plot coordinate transformation mechanism
 };
 
 /**

@@ -44,7 +44,7 @@ class AsterixDataItemHandlerRepetitive : public AsterixDataItemHandlerBase {
          * @brief Calculates the total size by scanning for the FX bit (LSB).
          * Matches the signature in IAsterixDataItemHandler.h.
          */
-        size_t decode(std::string_view data) final {
+        size_t decode(std::string_view data) {
             AsterixDataItemHandlerBase::decode(data);
 
             size_t totalSize = 1;
