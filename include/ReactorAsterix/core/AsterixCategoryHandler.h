@@ -132,19 +132,17 @@ class AsterixCategoryHandler : public IAsterixCategoryHandler {
             }
 
             // Hook: Post-decode logic (TOD synchronization, midnight wrap-around)
-            bool keep_report = static_cast<Derived*>(this)->onAfterDecode(ts);
+            static_cast<Derived*>(this)->onAfterDecode(ts);
 
-            if (keep_report) [[likely]] {
-                // Notify Listeners (Shared logic)
-                // LOCK-FREE NOTIFICATION
-                // Just take a reference to the current list.
-                // Even if a writer updates 'listeners' now, we safely iterate our local 'snapshot'.
-                auto currentListeners = this->getListeners();
+            // Notify Listeners (Shared logic)
+            // LOCK-FREE NOTIFICATION
+            // Just take a reference to the current list.
+            // Even if a writer updates 'listeners' now, we safely iterate our local 'snapshot'.
+            auto currentListeners = this->getListeners();
 
-                for (auto const& weak_l : *currentListeners) {
-                    if (auto l = weak_l.lock()) {
-                        l->onReportDecoded(report);
-                    }
+            for (auto const& weak_l : *currentListeners) {
+                if (auto l = weak_l.lock()) {
+                    l->onReportDecoded(report);
                 }
             }
 
@@ -152,9 +150,7 @@ class AsterixCategoryHandler : public IAsterixCategoryHandler {
         }
 
         // Default hook (can be overridden by Derived if needed)
-        bool onAfterDecode(T& /*report*/, struct timespec /*ts*/) {
-            return true;
-        }
+        void onAfterDecode(T& /*report*/, struct timespec /*ts*/) {}
 
         /**
          * High-speed member-based cache to replace TLS
@@ -186,7 +182,7 @@ class AsterixCategoryHandler : public IAsterixCategoryHandler {
          */
         uint32_t applyTimeCorrection(uint32_t rawTod, const SourceRecord& record) const {
             // Update the Radar's 24h clock state for reference
-            record.lastTod.store(rawTod, std::memory_order_relaxed);
+            record.lastTod.store(static_cast<int32_t>(rawTod), std::memory_order_relaxed);
 
             // Apply Offset (Transition to System Domain)
             constexpr int32_t TICKS_PER_DAY = 86400 * 128;

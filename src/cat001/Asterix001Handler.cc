@@ -86,31 +86,46 @@ uint32_t Asterix001Handler::expandTruncatedTime(uint16_t todLSP, uint32_t refTOD
     return bestT;
 }
 
-bool Asterix001Handler::onAfterDecode(struct timespec ts)
+void Asterix001Handler::onAfterDecode(struct timespec ts)
 {
-    if (!report.sourceRecord->isSynchronized.load(std::memory_order_acquire)) [[unlikely]] {
-        return false;
-    }
+    // Sync Status Check
+    // Set by your North message logic to decide if the TOD quality is 'high-precision'.
+    report.timeSynchronized = report.sourceRecord->isSynchronized.load(std::memory_order_acquire);
 
-    // Short-circuit: If sourceRecord has a valid lastTod, use it.
-    uint32_t last = report.sourceRecord->lastTod.load(std::memory_order_relaxed);
-
+    // Anchor Selection for 16-bit Expansion
+    // The 'ref' provides the 24-hour context needed to expand truncated 16-bit data.
     uint32_t ref;
 
-    if (last > 0) [[likely]] {
-        ref = last;
-    } else {
+    // Load the historical anchor from the source record.
+    int32_t last = report.sourceRecord->lastTod.load(std::memory_order_relaxed);
+
+    if (last < 0) {
+        // SENTINEL CASE: First packet for this source.
+        // We use the arrival time (rcTime) as the first 24h reference point.
         ref = calculateCurrentTod(ts);
+    } else {
+        // CONTINUITY CASE: Use the previously stored radar time as the anchor.
+        ref = static_cast<uint32_t>(last);
     }
 
+    // Mathematical Expansion
+    // Turn the 16-bit LSPs into a full 24-hour Time of Day.
     uint32_t TOD = report.i001_141.presence
         ? expandTruncatedTime(report.i001_141.todLSP, ref)
         : ref;
 
-    // Apply the shift
-    report.TOD = applyTimeCorrection(TOD, *report.sourceRecord);
+    // Reporting & State Persistence
+    if (report.timeSynchronized) [[likely]] {
+        // POST-NORTH: Use the stable offset to shift radar time into system domain.
+        // This call also internally updates report.sourceRecord->lastTod.
+        report.TOD = applyTimeCorrection(TOD, *report.sourceRecord);
+    } else {
+        // PRE-NORTH: Report arrival-based TOD ("The message is there").
+        report.TOD = TOD;
 
-    return true;
+        // Manually update the anchor so the next packet expands relative to this one.
+        report.sourceRecord->lastTod.store(static_cast<int32_t>(TOD), std::memory_order_relaxed);
+    }
 }
 
 } // namespace ReactorAsterix

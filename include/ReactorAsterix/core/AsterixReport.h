@@ -46,6 +46,8 @@ class AsterixReport : public AsterixMessage {
             AsterixStatsData& stats,
             IAsterixCategoryHandler& parent) = 0;
 
+        bool timeSynchronized{false};
+
     protected:
         /**
          * @brief Check if the received FSPEC is long enough.

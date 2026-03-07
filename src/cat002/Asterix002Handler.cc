@@ -31,14 +31,15 @@ using namespace Constants;
 Asterix002Handler::Asterix002Handler(std::shared_ptr<SourceStateManager> manager)
     : AsterixCategoryHandler(std::move(manager)) {}
 
-bool Asterix002Handler::onAfterDecode(struct timespec ts)
+void Asterix002Handler::onAfterDecode(struct timespec ts)
 {
+    // Retrieve the Time of Day from the decoded report
     uint32_t TOD = report.i002_030.TOD;
 
+    // Timing Synchronization Logic: Triggered by North Marker (Type 1)
     bool isNorth = (report.i002_000.messageType == I002_000_Handler::MESSAGE_TYPE_T::NORTH_MARKER);
-    // Timing Synchronization Logic: Only triggered by North Marker (Type 1)
-    if (isNorth) {
 
+    if (isNorth) {
         // Get seconds since midnight using simple modulo
         // 86400 seconds in a day
         uint32_t seconds_since_midnight = static_cast<uint32_t>(ts.tv_sec % 86400);
@@ -61,16 +62,18 @@ bool Asterix002Handler::onAfterDecode(struct timespec ts)
         sourceStateManager->updateTimeOffset(report.sourceIdentifier, diff);
     }
 
-    if (!(isNorth || report.sourceRecord->isSynchronized.load(std::memory_order_acquire))) [[unlikely]] {
+    // Identify current synchronization status
+    report.timeSynchronized = report.sourceRecord->isSynchronized.load(std::memory_order_acquire);
+
+    if (report.timeSynchronized) [[likely]] {
+        // Apply the shift
+        report.TOD = applyTimeCorrection(TOD, *report.sourceRecord);
+    } else {
+        // Phase 1: Pre-sync fallback (use raw radar time or arrival time)
+        report.TOD = TOD;
         // Still update lastTod for future bit-stitching even if not synced for distribution
-        report.sourceRecord->lastTod.store(TOD, std::memory_order_relaxed);
-        return false;
-    };
-
-    // Apply the shift
-    report.TOD = applyTimeCorrection(TOD, *report.sourceRecord);
-
-    return true;
+        report.sourceRecord->lastTod.store(static_cast<int32_t>(TOD), std::memory_order_relaxed);
+    }
 }
 
 } // namespace ReactorAsterix

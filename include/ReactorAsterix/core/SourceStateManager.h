@@ -30,26 +30,32 @@
 namespace ReactorAsterix {
 
 struct alignas(64) SourceRecord {
-    // Identification (2 bytes)
-    SourceIdentifier id;
-
     // 2. Temporal State (4 bytes)
-    mutable std::atomic<uint32_t> lastTod{0};
+    mutable std::atomic<int32_t> lastTod{-1};
 
     // Temporal offset stats (integrated for cache locality)
     std::atomic<int32_t>  averageOffset{0};
     std::atomic<uint32_t> offsetCount{0};
 
+    explicit SourceRecord(SourceIdentifier identifier) : id(identifier) {}
+
+    // Identification (2 bytes)
+    SourceIdentifier id;
+
     // Flag to indicate we have performed at least one valid time sync
     std::atomic<bool> isSynchronized{false};
-
-    explicit SourceRecord(SourceIdentifier identifier) : id(identifier) {}
 
     // Automatically calculate remaining space
     // Padding ensures that two threads updating different sensors
     // don't conflict on the same CPU cache line (False Sharing).
-    char padding[64 - (sizeof(SourceIdentifier) + sizeof(std::atomic<uint32_t>) * 3)];
+    char padding[64 - (sizeof(SourceIdentifier) +
+            sizeof(std::atomic<int32_t>) * 2 +
+            sizeof(std::atomic<uint32_t>) +
+            sizeof(std::atomic<bool>))];
 };
+
+static_assert(sizeof(SourceRecord) == 64,
+        "SourceRecord size must be exactly 64 bytes to prevent false sharing.");
 
 /**
  * @class SourceStateManager

@@ -47,7 +47,7 @@ class Asterix002Handler final
 
     protected:
         // Implementation of the Hook: Time Synchronization Logic
-        bool onAfterDecode(struct timespec ts);
+        void onAfterDecode(struct timespec ts);
 
     private:
         // Supports multiple sinks (Logger, Tracker, Display)

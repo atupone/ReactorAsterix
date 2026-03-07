@@ -23,20 +23,22 @@ namespace ReactorAsterix {
 Asterix048Handler::Asterix048Handler(std::shared_ptr<SourceStateManager> manager)
     : AsterixCategoryHandler(std::move(manager)) {}
 
-bool Asterix048Handler::onAfterDecode(struct timespec /*ts*/)
+void Asterix048Handler::onAfterDecode(struct timespec /*ts*/)
 {
+    // Retrieve the Time of Day from the decoded report
     uint32_t TOD = report.i048_140.TOD;
 
-    if (!report.sourceRecord->isSynchronized.load(std::memory_order_acquire)) [[unlikely]] {
+    // Identify sync status from the shared source record
+    report.timeSynchronized = report.sourceRecord->isSynchronized.load(std::memory_order_acquire);
+
+    if (report.timeSynchronized) [[likely]] {
+        // Apply the shift
+        report.TOD = applyTimeCorrection(TOD, *report.sourceRecord);
+    } else {
         // Still update lastTod for future bit-stitching even if not synced for distribution
-        report.sourceRecord->lastTod.store(TOD, std::memory_order_relaxed);
-        return false;
+        report.TOD = TOD;
+        report.sourceRecord->lastTod.store(static_cast<int32_t>(TOD), std::memory_order_relaxed);
     }
-
-    // Apply the shift
-    report.TOD = applyTimeCorrection(TOD, *report.sourceRecord);
-
-    return true;
 }
 
 } // namespace ReactorAsterix
