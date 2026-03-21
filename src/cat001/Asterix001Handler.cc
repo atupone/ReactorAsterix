@@ -18,6 +18,9 @@
 // Own header
 #include <ReactorAsterix/cat001/Asterix001Handler.h>
 
+// Library headers
+#include <ReactorAsterix/core/AsterixTime.h>
+
 namespace ReactorAsterix {
 
 Asterix001Handler::Asterix001Handler(std::shared_ptr<SourceStateManager> manager)
@@ -116,12 +119,13 @@ void Asterix001Handler::onAfterDecode(struct timespec ts)
 
     // Reporting & State Persistence
     if (report.timeSynchronized) [[likely]] {
+        uint32_t correctedTicks = applyTimeCorrection(TOD, *report.sourceRecord);
         // POST-NORTH: Use the stable offset to shift radar time into system domain.
         // This call also internally updates report.sourceRecord->lastTod.
-        report.TOD = applyTimeCorrection(TOD, *report.sourceRecord);
+        report.TOD = AsterixTime::anchor(correctedTicks, ts);
     } else {
         // PRE-NORTH: Report arrival-based TOD ("The message is there").
-        report.TOD = TOD;
+        report.TOD = AsterixTime::anchor(TOD, ts);
 
         // Manually update the anchor so the next packet expands relative to this one.
         report.sourceRecord->lastTod.store(static_cast<int32_t>(TOD), std::memory_order_relaxed);

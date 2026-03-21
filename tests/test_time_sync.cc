@@ -1,6 +1,8 @@
 #include <gtest/gtest.h>
 #include <memory>
+#include <chrono>
 #include <string_view>
+
 #include "ReactorAsterix/cat001/Asterix001Handler.h"
 #include "ReactorAsterix/core/SourceStateManager.h"
 
@@ -9,8 +11,9 @@ using namespace std::string_view_literals;
 
 class MockListener : public IAsterix001Listener {
 public:
-    uint32_t lastTod = 0;
+    AsterixMessage::AbsoluteTime lastTod{};
     bool lastSync = false;
+
     void onReportDecoded(const Asterix001Report& report) override {
         lastTod = report.TOD;
         lastSync = report.timeSynchronized;
@@ -36,11 +39,11 @@ TEST(Asterix001HandlerTest, FullProcessDataFlow) {
     // lastTod expands relative to 'ts' (System Time).
     handler.processDataRecord(fspec, data, ts, stats);
 
-    ASSERT_NE(listener->lastTod, 0);
+    ASSERT_NE(listener->lastTod, AsterixMessage::AbsoluteTime{});
     EXPECT_FALSE(listener->lastSync);
 
     // Capture the anchor created by the cold start
-    uint32_t firstReportTod = listener->lastTod;
+    auto firstReportTod = listener->lastTod;
 
     // PHASE 2: North Sync
     SourceIdentifier sid{1, 10};
@@ -52,6 +55,12 @@ TEST(Asterix001HandlerTest, FullProcessDataFlow) {
     handler.processDataRecord(fspec, data2, ts, stats);
 
     EXPECT_TRUE(listener->lastSync);
+
+    // Define the duration for ASTERIX ticks (1/128 second)
+    using Ticks = std::chrono::duration<int64_t, std::ratio<1, 128>>;
+
     // Result should be: (FirstReport + 256) - 100
-    EXPECT_EQ(listener->lastTod, (firstReportTod + 256) - 100);
+    auto expectedTod = firstReportTod + Ticks(256) - Ticks(100);
+
+    EXPECT_EQ(listener->lastTod, expectedTod);
 }

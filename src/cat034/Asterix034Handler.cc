@@ -20,6 +20,7 @@
 
 // Library headers
 #include <ReactorAsterix/core/AsterixConstants.h>
+#include <ReactorAsterix/core/AsterixTime.h>
 
 namespace ReactorAsterix {
 
@@ -67,10 +68,12 @@ void Asterix034Handler::onAfterDecode(struct timespec ts)
 
     if (report.timeSynchronized) [[likely]] {
         // Apply the shift
-        report.TOD = applyTimeCorrection(TOD, *report.sourceRecord);
+        uint32_t correctedTicks = applyTimeCorrection(TOD, *report.sourceRecord);
+        // Anchor the result
+        report.TOD = AsterixTime::anchor(correctedTicks, ts);
     } else {
-        // Phase 1: Pre-sync fallback (use raw radar time or arrival time)
-        report.TOD = TOD;
+        // Phase 1: Pre-sync fallback Anchor the raw TOD
+        report.TOD = AsterixTime::anchor(TOD, ts);
         // Still update lastTod for future bit-stitching even if not synced for distribution
         report.sourceRecord->lastTod.store(static_cast<int32_t>(TOD), std::memory_order_relaxed);
     }

@@ -18,12 +18,15 @@
 // Own header
 #include <ReactorAsterix/cat048/Asterix048Handler.h>
 
+// Library headers
+#include <ReactorAsterix/core/AsterixTime.h>
+
 namespace ReactorAsterix {
 
 Asterix048Handler::Asterix048Handler(std::shared_ptr<SourceStateManager> manager)
     : AsterixCategoryHandler(std::move(manager)) {}
 
-void Asterix048Handler::onAfterDecode(struct timespec /*ts*/)
+void Asterix048Handler::onAfterDecode(struct timespec ts)
 {
     // Retrieve the Time of Day from the decoded report
     uint32_t TOD = report.i048_140.TOD;
@@ -33,10 +36,13 @@ void Asterix048Handler::onAfterDecode(struct timespec /*ts*/)
 
     if (report.timeSynchronized) [[likely]] {
         // Apply the shift
-        report.TOD = applyTimeCorrection(TOD, *report.sourceRecord);
+        uint32_t correctedTicks = applyTimeCorrection(TOD, *report.sourceRecord);
+        // Anchor to absolute time
+        report.TOD = AsterixTime::anchor(correctedTicks, ts);
     } else {
+        // Anchor the raw TOD
+        report.TOD = AsterixTime::anchor(TOD, ts);
         // Still update lastTod for future bit-stitching even if not synced for distribution
-        report.TOD = TOD;
         report.sourceRecord->lastTod.store(static_cast<int32_t>(TOD), std::memory_order_relaxed);
     }
 }

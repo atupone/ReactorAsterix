@@ -155,6 +155,8 @@ if(BUILD_TESTING)
 
         find_package(GTest)
 
+        find_package(benchmark REQUIRED)
+
         add_executable(unit_tests
                 tests/test_cat001.cc
                 tests/test_mandatory.cc
@@ -164,6 +166,26 @@ if(BUILD_TESTING)
 
         target_link_libraries(unit_tests PRIVATE ReactorAsterix GTest::gtest_main)
         add_test(NAME AllTests COMMAND unit_tests)
+
+        if(benchmark_FOUND)
+                add_executable(bench_time_sync tests/bench_time_sync.cc)
+
+                # Link against the core library and the benchmark framework
+                target_link_libraries(bench_time_sync
+                        PRIVATE
+                        ReactorAsterix
+                        benchmark::benchmark
+                )
+
+                # Ensure include paths match your project structure
+                target_include_directories(bench_time_sync PRIVATE
+                        ${CMAKE_CURRENT_SOURCE_DIR}/include
+                )
+
+                add_executable(bench_cat048_decode tests/bench_cat048_decode.cc)
+                target_link_libraries(bench_cat048_decode PRIVATE ReactorAsterix benchmark::benchmark)
+                target_include_directories(bench_cat048_decode PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/include)
+        endif()
 endif()
 
 if(BUILD_EXAMPLES)

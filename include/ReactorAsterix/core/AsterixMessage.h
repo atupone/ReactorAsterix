@@ -18,6 +18,7 @@
 #pragma once
 
 // System headers
+#include <chrono>
 #include <cstddef>
 #include <cstdint>
 
@@ -27,39 +28,46 @@
 
 namespace ReactorAsterix {
 
-/**
- * @class AsterixMessage
- * @brief The base class for all decoded ASTERIX data.
- * focusing purely on shared metadata like Source ID and Reception Time.
- */
-class AsterixMessage {
-    public:
-        AsterixMessage() = default;
-        virtual ~AsterixMessage() = default;
+    /**
+     * @class AsterixMessage
+     * @brief The base class for all decoded ASTERIX data.
+     * focusing purely on shared metadata like Source ID and Reception Time.
+     */
+    class AsterixMessage {
+        public:
+            // Expose the clean type for users
+            using AbsoluteTime = std::chrono::system_clock::time_point;
 
-        inline void reset() {
-            // Reset the pointer to the Source Record used for time synchronization
-            sourceRecord = nullptr;
-        };
+            AsterixMessage() = default;
+            virtual ~AsterixMessage() = default;
 
-        // Temporary link to the manager, set by the Handler at creation
-        SourceStateManager* manager = nullptr;
+            inline void reset() {
+                // Reset the pointer to the Source Record used for time synchronization
+                sourceRecord = nullptr;
+                TOD = AbsoluteTime{}; // Reset to epoch
+            };
 
-        // Pointer to the persistent sensor state in the SourceStateManager deque
-        const SourceRecord* sourceRecord = nullptr;
+            // Temporary link to the manager, set by the Handler at creation
+            SourceStateManager* manager = nullptr;
 
-        // Uniquely identifies the radar station
-        SourceIdentifier sourceIdentifier;
+            // Pointer to the persistent sensor state in the SourceStateManager deque
+            const SourceRecord* sourceRecord = nullptr;
 
-        // The time the message was received
-        uint32_t TOD;
+            // Uniquely identifies the radar station
+            SourceIdentifier sourceIdentifier;
 
-        // Reusable setter used by Ixxx/010 Handlers across all categories
-        inline void setSourceIdentifier(uint8_t sac, uint8_t sic, const SourceRecord* record) {
-            sourceIdentifier = {sac, sic};
-            sourceRecord = record;
-        }
-};
+            /*
+             * @brief The absolute UTC time of the message.
+             * Already anchored to the correct date by the library.
+             */
+            AbsoluteTime TOD;
+
+            // Reusable setter used by Ixxx/010 Handlers across all categories
+            inline void setSourceIdentifier(uint8_t sac, uint8_t sic, const SourceRecord* record) {
+                sourceIdentifier = {sac, sic};
+                sourceRecord = record;
+            }
+    };
 
 } // namespace ReactorAsterix
 
