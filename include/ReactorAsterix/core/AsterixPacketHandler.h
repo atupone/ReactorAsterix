@@ -77,12 +77,10 @@ class alignas(CacheLineSize) AsterixPacketHandler {
         /**
          * @brief Registers a specialized handler for a specific ASTERIX category.
          *
-         * @param category The ASTERIX category number.
          * @param handler A pointer to the handler object. The AsterixPacketHandler
          * takes ownership of this pointer.
          */
         void registerCategoryHandler(
-                uint8_t category,
                 std::unique_ptr<IAsterixCategoryHandler> handler);
 
         /**

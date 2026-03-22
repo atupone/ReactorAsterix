@@ -45,7 +45,7 @@ int main() {
     auto logger = std::make_shared<TerminalLogger>();
     cat1Handler->addListener(logger);
 
-    packetHandler.registerCategoryHandler(1, std::move(cat1Handler));
+    packetHandler.registerCategoryHandler(std::move(cat1Handler));
 
     // Sample Packet: Category 1, Length 12, SAC/SIC, TRD, Position, Mode 3/A
     // Logic: [CAT][LEN_HI][LEN_LO][FSPEC][DATA...]

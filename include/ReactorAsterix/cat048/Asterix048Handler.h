@@ -37,8 +37,6 @@ class Asterix048Handler final
         // This line is essential for CRTP to work with private members:
         friend class AsterixCategoryHandler<Asterix048Report, IAsterix048Listener, Asterix048Handler>;
     public:
-        static constexpr uint8_t Category = 48;
-
         /**
          * @brief Constructor that initializes the data item handlers.
          */

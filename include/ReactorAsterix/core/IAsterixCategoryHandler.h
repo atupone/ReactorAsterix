@@ -41,6 +41,7 @@ namespace ReactorAsterix {
      */
     class IAsterixCategoryHandler {
         public:
+            IAsterixCategoryHandler(uint8_t category) : Category(category) {};
             /**
              * @brief Virtual destructor to ensure proper cleanup of derived classes.
              */
@@ -64,6 +65,9 @@ namespace ReactorAsterix {
                     std::string_view payload,
                     struct timespec ts,
                     AsterixStatsData& localStats) = 0;
+
+            const uint8_t Category;
+
         protected:
             uint16_t      m_lastCacheKey = 0;
             SourceRecord* m_cachedRecord = nullptr;

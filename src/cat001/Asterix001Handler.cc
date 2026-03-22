@@ -24,7 +24,7 @@
 namespace ReactorAsterix {
 
 Asterix001Handler::Asterix001Handler(std::shared_ptr<SourceStateManager> manager)
-    : AsterixCategoryHandler(std::move(manager)) {}
+    : AsterixCategoryHandler(std::move(manager), 1 /* category */) {}
 
 uint32_t Asterix001Handler::calculateCurrentTod(struct timespec ts) noexcept {
     // Use the KERNEL timestamp as the fallback/reference

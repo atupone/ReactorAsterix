@@ -40,8 +40,10 @@ namespace ReactorAsterix {
 template <typename T, typename ListenerInterface, typename Derived>
 class AsterixCategoryHandler : public IAsterixCategoryHandler {
     public:
-        explicit AsterixCategoryHandler(std::shared_ptr<SourceStateManager> manager)
-            : sourceStateManager(std::move(manager)) {}
+        explicit AsterixCategoryHandler(
+                std::shared_ptr<SourceStateManager> manager,
+                uint8_t category)
+            : IAsterixCategoryHandler(category), sourceStateManager(std::move(manager)) {}
         /**
          * @brief Virtual destructor to ensure proper cleanup of derived classes
          * and managed handlers.

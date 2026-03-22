@@ -41,7 +41,7 @@ int main() {
     auto cat1 = std::make_unique<Asterix001Handler>(stateManager);
     auto printer = std::make_shared<AsterixPrinter>();
     cat1->addListener(printer);
-    packetHandler.registerCategoryHandler(1, std::move(cat1));
+    packetHandler.registerCategoryHandler(std::move(cat1));
 
     // 2. Setup Network Reactor
     EventLoop loop;

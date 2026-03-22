@@ -24,7 +24,7 @@
 namespace ReactorAsterix {
 
 Asterix048Handler::Asterix048Handler(std::shared_ptr<SourceStateManager> manager)
-    : AsterixCategoryHandler(std::move(manager)) {}
+    : AsterixCategoryHandler(std::move(manager), 48) {}
 
 void Asterix048Handler::onAfterDecode(struct timespec ts)
 {

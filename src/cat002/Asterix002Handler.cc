@@ -30,7 +30,7 @@ using namespace Constants;
  * @brief Constructor for the ASTERIX Category 2 Handler.
  */
 Asterix002Handler::Asterix002Handler(std::shared_ptr<SourceStateManager> manager)
-    : AsterixCategoryHandler(std::move(manager)) {}
+    : AsterixCategoryHandler(std::move(manager), 2) {}
 
 void Asterix002Handler::onAfterDecode(struct timespec ts)
 {

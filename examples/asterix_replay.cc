@@ -88,16 +88,16 @@ int main(int argc, char** argv) {
 
     // 2. Register all Category Handlers
     // Category 001: Target Reports
-    asterixHandler.registerCategoryHandler(1, std::make_unique<Asterix001Handler>(state));
+    asterixHandler.registerCategoryHandler(std::make_unique<Asterix001Handler>(state));
 
     // Category 002: Service Messages
-    asterixHandler.registerCategoryHandler(2, std::make_unique<Asterix002Handler>(state));
+    asterixHandler.registerCategoryHandler(std::make_unique<Asterix002Handler>(state));
 
     // Category 034: Monoradar Service Messages
-    asterixHandler.registerCategoryHandler(34, std::make_unique<Asterix034Handler>(state));
+    asterixHandler.registerCategoryHandler(std::make_unique<Asterix034Handler>(state));
 
     // Category 048: Monoradar Target Reports
-    asterixHandler.registerCategoryHandler(48, std::make_unique<Asterix048Handler>(state));
+    asterixHandler.registerCategoryHandler(std::make_unique<Asterix048Handler>(state));
 
     // 3. Subscribe the Asterix handler to the PCAP stream
     // Assuming ASTERIX traffic is on port 5001

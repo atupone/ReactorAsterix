@@ -38,9 +38,10 @@ AsterixPacketHandler::~AsterixPacketHandler() {
  * The handler is linked to the global stats object before ownership is transferred.
  */
 void AsterixPacketHandler::registerCategoryHandler(
-        uint8_t category,
         std::unique_ptr<IAsterixCategoryHandler> handler) {
     if (!handler) return;
+
+    uint8_t category = handler->Category;
 
     // CHECK FOR EXISTING HANDLER (The "Reset" Logic)
     // If the lookup table already has a pointer for this category,
