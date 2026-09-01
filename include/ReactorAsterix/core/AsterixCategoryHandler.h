@@ -59,7 +59,7 @@ class AsterixCategoryHandler : public IAsterixCategoryHandler {
             std::lock_guard<std::mutex> lock(writeMutex_);
 
             // Load current list
-            auto current = std::atomic_load(&listeners_);
+            auto current = listeners_.load(std::memory_order_relaxed);
 
             // Create a copy (COW)
             auto next = std::make_shared<ListenerList>(*current);
@@ -73,14 +73,14 @@ class AsterixCategoryHandler : public IAsterixCategoryHandler {
             next->push_back(l);
 
             // Atomic store
-            std::atomic_store(&listeners_, next);
+            listeners_.store(next, std::memory_order_release);
         }
 
         void removeListener(std::shared_ptr<ListenerInterface> l) {
             if (!l) return;
             std::lock_guard<std::mutex> lock(writeMutex_);
 
-            auto current = std::atomic_load(&listeners_);
+            auto current = listeners_.load(std::memory_order_relaxed);
             auto next = std::make_shared<ListenerList>(*current);
 
             next->erase(std::remove_if(next->begin(), next->end(),
@@ -89,7 +89,7 @@ class AsterixCategoryHandler : public IAsterixCategoryHandler {
                     return !sp || sp == l;
                 }), next->end());
 
-            std::atomic_store(&listeners_, next);
+            listeners_.store(next, std::memory_order_release);
         }
 
         /**
@@ -206,11 +206,11 @@ class AsterixCategoryHandler : public IAsterixCategoryHandler {
 
         // This allows derived classes (Cat001, Cat002) to get the snapshot
         std::shared_ptr<ListenerList> getListeners() const {
-            return std::atomic_load(&listeners_);
+            return listeners_.load(std::memory_order_acquire);
         }
 
     private:
-        std::shared_ptr<ListenerList> listeners_{std::make_shared<ListenerList>()};
+        std::atomic<std::shared_ptr<ListenerList>> listeners_{std::make_shared<ListenerList>()};
         std::mutex writeMutex_; // Only for writers (addListener)
 };
 
